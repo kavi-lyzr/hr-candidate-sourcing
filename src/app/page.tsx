@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { FilterDialog } from "@/components/filter-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/AuthProvider";
+import { useSSE } from "@/hooks/use-sse";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
@@ -24,11 +26,13 @@ interface Message {
     summary: string;
     companyLogo?: string;
     profilePic?: string;
+    linkedinUrl?: string;
+    public_id: string;
   }>;
 }
 
 export default function Home() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userId, email, displayName } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [showChat, setShowChat] = useState(false);
@@ -42,7 +46,17 @@ export default function Home() {
   const [jdDropdownOpen, setJdDropdownOpen] = useState(false);
   const [availableJDs, setAvailableJDs] = useState<Array<{id: string, name: string}>>([]);
   const [isClient, setIsClient] = useState(false);
-  const [conversationHistory, setConversationHistory] = useState<Array<{id: string, title: string, messages: Message[]}>>([]);
+  const [conversationHistory, setConversationHistory] = useState<Array<{
+    sessionId: string;
+    title: string;
+    messageCount: number;
+    lastUpdated: string;
+    createdAt: string;
+  }>>([]);
+  
+  // SSE State
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const { messages: sseMessages, isDone, error: sseError } = useSSE(currentSessionId);
   
   const placeholderTexts = useMemo(() => [
     selectedJD ? "Find candidates who match this job description" : "Software engineers in the Bay Area with 2+ years of experience building AI Agents on Lyzr",
@@ -66,57 +80,49 @@ export default function Home() {
     setShowChat(true);
 
     try {
-      // Simulate AI response for now
-      setTimeout(() => {
-        const aiResponse: Message = {
-          id: (Date.now() + 1).toString(),
-          content: "I'm analyzing your requirements and searching for the best candidates. Here are my top recommendations:",
-          role: 'assistant',
-          timestamp: new Date(),
-          candidates: [
-            {
-              id: "jo",
-              name: "Jo Rhett",
-              title: "Staff Engineer, Cloud Security And Infrastructure at Tulip",
-              company: "Tulip",
-              location: "San Jose, California, United States",
-              summary: "Experienced cloud security engineer with 8+ years at leading tech companies, specializing in infrastructure automation and security protocols.",
-              companyLogo: "https://download.tulip.co/assets/tulip-background-logo.png",
-              profilePic: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"
-            },
-            {
-              id: "erwin",
-              name: "Erwin Jansen",
-              title: "Software Engineer at Google",
-              company: "Google",
-              location: "San Francisco, California, United States",
-              education: "Doctorate University Of Florida",
-              summary: "AI/ML software engineer with PhD in Computer Science, currently building next-generation search algorithms at Google.",
-              companyLogo: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png",
-              profilePic: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face"
-            },
-            {
-              id: "nimish",
-              name: "Nimish Kulkarni",
-              title: "Senior Software Engineer at Branch Metrics",
-              company: "Branch Metrics",
-              location: "San Francisco, California, United States",
-              education: "Stanford University School Of Engineering",
-              summary: "Senior full-stack engineer with Stanford engineering background, expert in mobile attribution and deep linking technologies.",
-              profilePic: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face"
-            }
-          ]
-        };
+      console.log('[Search] Starting search with query:', searchQuery);
+      
+      // Check if user is authenticated
+      if (!isAuthenticated || !userId || !email) {
+        throw new Error('User not authenticated');
+      }
 
-        setMessages(prev => [...prev, aiResponse]);
-        setIsLoading(false);
-      }, 2000);
+      // Call start-search API with token + user info
+      const response = await fetch('/api/chat/start-search', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
+        },
+        body: JSON.stringify({
+          query: searchQuery.trim(),
+          jdId: selectedJD || null,
+          user: {
+            id: userId,
+            email: email,
+            name: displayName
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to start search');
+      }
+
+      const { sessionId } = await response.json();
+      console.log('[Search] Received session ID:', sessionId);
+      
+      // Connect to SSE stream
+      setCurrentSessionId(sessionId);
 
     } catch (error) {
-      console.error('Error during search:', error);
+      console.error('[Search] Error:', error);
+      toast.error('Failed to start search. Please try again.');
+      
       const errorMessage: Message = {
-        id: (Date.now() + 2).toString(),
-        content: "I'm sorry, I encountered an error while searching for candidates. Please try again.",
+        id: (Date.now() + 1).toString(),
+        content: "I'm sorry, I encountered an error while starting the search. Please try again.",
         role: 'assistant',
         timestamp: new Date(),
       };
@@ -140,29 +146,184 @@ export default function Home() {
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
-    // Simulate AI thinking
+    // TODO: Implement follow-up conversation with same session
+    // For now, just show a message
     setTimeout(() => {
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: "I understand you'd like to refine your search. Let me look for more specific candidates based on your feedback.",
+        content: "Follow-up conversations are coming soon! For now, please start a new search.",
         role: 'assistant',
         timestamp: new Date(),
       };
 
       setMessages(prev => [...prev, aiResponse]);
       setIsLoading(false);
-    }, 1500);
+    }, 1000);
+  };
+
+  // Process SSE messages when stream is complete
+  useEffect(() => {
+    if (!isDone || sseMessages.length === 0) return;
+
+    const processStreamResponse = async () => {
+      console.log('[SSE] Processing complete stream:', sseMessages);
+      
+      try {
+        // Combine all SSE chunks into full response
+        const fullResponse = sseMessages.join('');
+        
+        // Parse candidates from markdown links: [Name](public_id)
+        const candidateRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+        const publicIds: string[] = [];
+        let match;
+
+        while ((match = candidateRegex.exec(fullResponse)) !== null) {
+          publicIds.push(match[2]); // public_id
+        }
+
+        console.log('[SSE] Found candidate links:', publicIds);
+
+        let candidates = [];
+
+        // Fetch full candidate details if we found any
+        if (publicIds.length > 0) {
+          console.log('[SSE] Fetching candidate details...');
+          const response = await fetch('/api/candidates/get-by-ids', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ publicIds }),
+          });
+
+          if (response.ok) {
+            candidates = await response.json();
+            console.log('[SSE] Fetched', candidates.length, 'candidate details');
+          } else {
+            console.error('[SSE] Failed to fetch candidate details');
+            toast.error('Failed to load candidate details');
+          }
+        }
+
+        // Create AI response message
+        const aiResponse: Message = {
+          id: Date.now().toString(),
+          content: fullResponse,
+          role: 'assistant',
+          timestamp: new Date(),
+          candidates: candidates.length > 0 ? candidates : undefined,
+        };
+
+        setMessages(prev => [...prev, aiResponse]);
+        setIsLoading(false);
+        
+        // Reload conversation history to include the new conversation
+        loadConversationHistory();
+        
+        console.log('[SSE] Stream processing complete');
+      } catch (error) {
+        console.error('[SSE] Error processing stream:', error);
+        toast.error('Failed to process search results');
+        setIsLoading(false);
+        setCurrentSessionId(null);
+      }
+    };
+
+    processStreamResponse();
+  }, [isDone, sseMessages]);
+
+  // Handle SSE errors
+  useEffect(() => {
+    if (sseError) {
+      console.error('[SSE] Stream error:', sseError);
+      toast.error(sseError);
+      
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        content: "Connection lost. Please try searching again.",
+        role: 'assistant',
+        timestamp: new Date(),
+      };
+      
+      setMessages(prev => [...prev, errorMessage]);
+      setIsLoading(false);
+      setCurrentSessionId(null);
+    }
+  }, [sseError]);
+
+  // Load conversation history on mount
+  useEffect(() => {
+    if (isAuthenticated && userId) {
+      loadConversationHistory();
+    }
+  }, [isAuthenticated, userId]);
+
+  const loadConversationHistory = async () => {
+    if (!userId) return;
+
+    try {
+      const response = await fetch(`/api/chat/history?userId=${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setConversationHistory(data.sessions || []);
+        console.log(`Loaded ${data.sessions?.length || 0} conversation(s)`);
+      }
+    } catch (error) {
+      console.error('Error loading conversation history:', error);
+    }
   };
 
   const resetConversation = () => {
+    // Don't save empty conversations
+    if (messages.length > 0 && currentSessionId) {
+      // Conversation is already saved in database, just reload history
+      loadConversationHistory();
+    }
+    
     setMessages([]);
     setShowChat(false);
     setIsLoading(false);
+    setCurrentSessionId(null);
   };
 
-  const loadConversation = (conversation: {id: string, title: string, messages: Message[]}) => {
-    setMessages(conversation.messages);
-    setShowChat(true);
+  const loadConversation = async (sessionId: string) => {
+    try {
+      console.log(`Loading conversation: ${sessionId}`);
+      
+      const response = await fetch(`/api/chat/session/${sessionId}`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const session = data.session;
+        
+        // Convert conversation history to messages
+        const loadedMessages: Message[] = session.conversationHistory.map((msg: any, index: number) => ({
+          id: `${sessionId}-${index}`,
+          content: msg.content,
+          role: msg.role,
+          timestamp: new Date(msg.timestamp),
+          // TODO: Load candidates if they were saved
+        }));
+
+        setMessages(loadedMessages);
+        setCurrentSessionId(sessionId);
+        setShowChat(true);
+        
+        console.log(`Loaded ${loadedMessages.length} messages`);
+      } else {
+        toast.error('Failed to load conversation');
+      }
+    } catch (error) {
+      console.error('Error loading conversation:', error);
+      toast.error('Failed to load conversation');
+    }
   };
 
   const handleFilterSave = () => {
@@ -247,16 +408,16 @@ export default function Home() {
                   <>
                     {conversationHistory.map((conversation) => (
                       <DropdownMenuItem
-                        key={conversation.id}
-                        onClick={() => loadConversation(conversation)}
+                        key={conversation.sessionId}
+                        onClick={() => loadConversation(conversation.sessionId)}
                         className="flex flex-col items-start gap-1 p-3 cursor-pointer"
                       >
                         <div className="font-medium text-sm truncate w-full">
                           {conversation.title}
-              </div>
+                        </div>
                         <div className="text-xs text-muted-foreground">
-                          {conversation.messages.length} messages
-            </div>
+                          {new Date(conversation.lastUpdated).toLocaleDateString()} • {conversation.messageCount} messages
+                        </div>
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator />
@@ -446,15 +607,22 @@ export default function Home() {
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                     <Bot className="h-4 w-4 text-primary" />
                   </div>
-                  <div className="bg-muted/60 border border-border/30 backdrop-blur-sm rounded-2xl px-4 py-3">
-                    <div className="flex items-center space-x-2">
+                  <div className="bg-muted/60 border border-border/30 backdrop-blur-sm rounded-2xl px-4 py-3 max-w-2xl">
+                    <div className="flex items-center space-x-2 mb-2">
                       <div className="flex space-x-1">
                         <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
                         <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                         <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
-                      <span className="text-sm text-muted-foreground">AI is thinking...</span>
+                      <span className="text-sm text-muted-foreground">
+                        {sseMessages.length === 0 ? 'Connecting to AI agent...' : 'Searching LinkedIn...'}
+                      </span>
                     </div>
+                    {sseMessages.length > 0 && (
+                      <p className="text-sm text-foreground whitespace-pre-wrap">
+                        {sseMessages.join('')}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

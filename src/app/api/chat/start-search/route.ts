@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
 import connectDB from '@/lib/db';
 import User from '@/models/user';
 import SearchSession from '@/models/searchSession';
@@ -11,30 +10,38 @@ export const maxDuration = 60;
 
 export async function POST(request: Request) {
     try {
-        // 1. Get authenticated user
-        const session = await getServerSession();
-        if (!session?.user?.email) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        // 1. Validate authentication token
+        const authHeader = request.headers.get('authorization');
+        const expectedToken = process.env.API_AUTH_TOKEN;
+        
+        if (!authHeader || !expectedToken || authHeader !== `Bearer ${expectedToken}`) {
+            return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 });
         }
 
-        // 2. Parse request body
-        const { query, jdId } = await request.json();
+        // 2. Parse request body and validate user info
+        const { query, jdId, user } = await request.json();
         
         if (!query || typeof query !== 'string') {
             return NextResponse.json({ error: 'Query is required' }, { status: 400 });
         }
 
+        if (!user || !user.id || !user.email) {
+            return NextResponse.json({ error: 'User information is required' }, { status: 400 });
+        }
+
         // 3. Connect to DB and fetch user
         await connectDB();
-        const user = await User.findOne({ email: session.user.email });
+        const dbUser = await User.findOne({ lyzrUserId: user.id });
         
-        if (!user) {
-            return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        if (!dbUser) {
+            return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
         }
 
         // 4. Create a new search session
+        const title = query.slice(0, 50) + (query.length > 50 ? '...' : '');
         const searchSession = new SearchSession({
-            user: user._id,
+            user: dbUser._id,
+            title,
             initialQuery: query,
             attachedJd: jdId || null,
             conversationHistory: [{
@@ -46,11 +53,11 @@ export async function POST(request: Request) {
         await searchSession.save();
 
         const sessionId = (searchSession._id as any).toString();
-        console.log(`Created search session: ${sessionId}`);
+        console.log(`Created search session: ${sessionId} for user: ${user.email}`);
 
         // 5. Prepare system prompt variables
         const systemPromptVariables = {
-            user_name: user.displayName || user.email.split('@')[0],
+            user_name: user.name || user.email.split('@')[0],
             available_locations: Object.entries(availableLocations)
                 .map(([name, code]) => `${name}: ${code}`)
                 .join(', '),
@@ -58,31 +65,36 @@ export async function POST(request: Request) {
         };
 
         // 6. Decrypt API key
-        const apiKey = decrypt(user.lyzrApiKey);
+        const apiKey = decrypt(dbUser.lyzrApiKey);
 
-        // 7. Start streaming chat in background (non-blocking)
-        // We don't await this - let it run in background
-        streamAndPublish(
-            apiKey,
-            user.sourcingAgent.agentId,
-            query,
-            user.lyzrUserId,
-            systemPromptVariables,
-            sessionId
-        ).catch(error => {
-            console.error(`Error in streaming for session ${sessionId}:`, error);
-            pubsub.publish(sessionId, {
-                type: 'error',
-                error: error.message,
-            });
-        });
-
-        // 8. Return session ID immediately
-        return NextResponse.json({
+        // 7. Return session ID immediately so frontend can connect to SSE
+        // This ensures the listener is ready BEFORE we start publishing
+        const response = NextResponse.json({
             success: true,
             sessionId,
             message: 'Search initiated. Connect to stream endpoint for real-time updates.',
         });
+
+        // 8. Start streaming chat in background (with a small delay to ensure SSE connects)
+        // We don't await this - let it run in background
+        setTimeout(() => {
+            streamAndPublish(
+                apiKey,
+                dbUser.sourcingAgent.agentId,
+                query,
+                dbUser.lyzrUserId,
+                systemPromptVariables,
+                sessionId
+            ).catch(error => {
+                console.error(`Error in streaming for session ${sessionId}:`, error);
+                pubsub.publish(sessionId, {
+                    type: 'error',
+                    error: error.message,
+                });
+            });
+        }, 100); // 100ms delay to let SSE connection establish
+
+        return response;
 
     } catch (error: any) {
         console.error('Error in /api/chat/start-search:', error);

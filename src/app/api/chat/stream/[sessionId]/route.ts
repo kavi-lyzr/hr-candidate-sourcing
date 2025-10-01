@@ -1,5 +1,4 @@
 import { NextRequest } from 'next/server';
-import { getServerSession } from 'next-auth';
 import { pubsub } from '@/lib/pubsub';
 
 export const runtime = 'nodejs';
@@ -9,10 +8,14 @@ export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ sessionId: string }> }
 ) {
-    // 1. Authenticate user
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-        return new Response('Unauthorized', { status: 401 });
+    // 1. Validate authentication token from query params
+    const url = new URL(request.url);
+    const token = decodeURIComponent(url.searchParams.get('token') || '');
+    const expectedToken = process.env.API_AUTH_TOKEN;
+    
+    if (!token || !expectedToken || token !== expectedToken) {
+        console.error(`[SSE] Token validation failed. Received: "${token?.substring(0, 10)}...", Expected: "${expectedToken?.substring(0, 10)}..."`);
+        return new Response('Unauthorized - Invalid token', { status: 401 });
     }
 
     const { sessionId } = await params;

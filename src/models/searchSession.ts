@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface ISearchSession {
   user: mongoose.Types.ObjectId;
+  title: string;
   initialQuery: string;
   attachedJd?: mongoose.Types.ObjectId;
   conversationHistory: { role: string; content: string; timestamp: Date }[];
@@ -15,6 +16,7 @@ export interface ISearchSessionDocument extends ISearchSession, Document {
 const SearchSessionSchema: Schema<ISearchSessionDocument> = new Schema<ISearchSessionDocument>(
   {
     user: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    title: { type: String, required: true },
     initialQuery: { type: String, required: true },
     attachedJd: { type: Schema.Types.ObjectId, ref: 'JobDescription' },
     conversationHistory: [
