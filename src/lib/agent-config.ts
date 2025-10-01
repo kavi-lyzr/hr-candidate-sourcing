@@ -1,10 +1,9 @@
-export const LATEST_SOURCING_AGENT_VERSION = '1.1.1';
-export const LATEST_MATCHING_AGENT_VERSION = '1.1.1';
-export const LATEST_PROFILE_SUMMARY_AGENT_VERSION = '1.0.1';
-export const LATEST_TOOL_VERSION = '1.0.2';
+export const LATEST_SOURCING_AGENT_VERSION = '1.2.0';
+export const LATEST_MATCHING_AGENT_VERSION = '1.2.0';
+export const LATEST_PROFILE_SUMMARY_AGENT_VERSION = '1.0.2';
+export const LATEST_TOOL_VERSION = '1.0.3';
 
 export const SOURCING_AGENT_CONFIG = {
-    version: LATEST_SOURCING_AGENT_VERSION,
     agentType: 'sourcing',
     name: "HR Sourcing Agent",
     description: "An intelligent AI agent that understands natural language recruiting queries, searches for candidates on LinkedIn, and presents a summarized list of top profiles.",
@@ -30,15 +29,23 @@ export const SOURCING_AGENT_CONFIG = {
     "Use this tool when the user asks to find, search, or source candidates. Extract relevant criteria from the user's query such as job titles, skills, companies, and locations. Always call this tool when you need to find candidate profiles matching specific requirements"
   ]
 }`,
-    model: 'gpt-4o-mini',
-    provider_id: 'OpenAI',
-    llm_credential_id: 'lyzr_openai',
-    temperature: 0.2,
-    top_p: 1,
+    features: [
+        {
+            type: "MEMORY",
+            config: {
+                max_messages_context_count: 10
+            },
+            priority: 0
+        }
+    ],
+    model: 'gemini/gemini-2.0-flash-exp',
+    provider_id: 'Google',
+    llm_credential_id: 'lyzr_google',
+    temperature: 0.5,
+    top_p: 0.9,
 };
 
 export const MATCHING_AGENT_CONFIG = {
-    version: LATEST_MATCHING_AGENT_VERSION,
     agentType: 'matching',
     name: "Candidate Matching Agent",
     description: "An analytical AI agent that evaluates a list of saved candidate profiles against a specific Job Description to rank them and provide a rationale for each match.",
@@ -61,15 +68,23 @@ export const MATCHING_AGENT_CONFIG = {
     "Use this tool when you need to rank or match candidates against a job description. Always pass the complete job description and all candidate profiles to this tool. Call this tool as soon as you receive both the job description and candidate profiles"
   ]
 }`,
-    model: 'gpt-4o-mini',
-    provider_id: 'OpenAI',
-    llm_credential_id: 'lyzr_openai',
-    temperature: 0.2,
-    top_p: 1,
+    features: [
+        {
+            type: "MEMORY",
+            config: {
+                max_messages_context_count: 10
+            },
+            priority: 0
+        }
+    ],
+    model: 'gemini/gemini-2.0-flash-exp',
+    provider_id: 'Google',
+    llm_credential_id: 'lyzr_google',
+    temperature: 0.5,
+    top_p: 0.9,
 };
 
 export const PROFILE_SUMMARY_AGENT_CONFIG = {
-    version: LATEST_PROFILE_SUMMARY_AGENT_VERSION,
     agentType: 'profile_summary',
     name: "Profile Summary Agent",
     description: "An AI agent that generates concise, contextual summaries of candidate profiles based on user requirements.",
@@ -104,7 +119,7 @@ export const tools = {
     "openapi": "3.0.0",
     "info": {
         "title": "HR Sourcing & Matching API",
-        "version": LATEST_TOOL_VERSION,
+        "version": "1.0.3",
         "description": "A unified API for the HR Sourcing Agent. It provides tools to search for candidates on LinkedIn, rank candidates, and generate profile summaries."
     },
     "servers": [
@@ -155,8 +170,7 @@ export const tools = {
                                     },
                                     "limit": {
                                         "type": "integer",
-                                        "description": "The maximum number of candidates to fetch. Optional - defaults to 25 if not provided.",
-                                        "default": 25
+                                        "description": "The maximum number of candidates to fetch. Optional - defaults to 25 if not provided."
                                     }
                                 }
                             }
@@ -261,7 +275,6 @@ export const tools = {
 };
 
 export const TOOL_CONFIG = {
-    version: LATEST_TOOL_VERSION,
     toolName: 'hr_sourcing_api',
     openapi_schema: tools,
 };

@@ -52,7 +52,7 @@ async function createLyzrTool(apiKey: string, toolConfig: typeof TOOL_CONFIG, us
     const contextToken = encrypt(userId);
 
     const requestData = {
-        tool_set_name: `${toolConfig.toolName}_v${toolConfig.version}`,
+        tool_set_name: `${toolConfig.toolName}_v${LATEST_TOOL_VERSION}`,
         openapi_schema: updatedTools,
         default_headers: {
             "x-token": contextToken
@@ -91,42 +91,15 @@ async function createLyzrTool(apiKey: string, toolConfig: typeof TOOL_CONFIG, us
     return toolNames;
 }
 
-async function ensureToolVersion(apiKey: string, userId: string): Promise<string[]> {
-    const toolIdentifier = { toolName: TOOL_CONFIG.toolName, version: TOOL_CONFIG.version };
-
-    // First, try to find the existing tool.
-    const existingTool = await ToolVersion.findOne(toolIdentifier);
-    if (existingTool) {
-        return existingTool.lyzrToolId;
-    }
-
-    // If it doesn't exist, try to create it.
-    try {
-        console.log(`Creating new tool version: ${TOOL_CONFIG.toolName} v${TOOL_CONFIG.version}`);
-        const newToolIds = await createLyzrTool(apiKey, TOOL_CONFIG, userId);
-
-        const tool = new ToolVersion({
-            ...toolIdentifier,
-            lyzrToolId: newToolIds,
-            openapi_schema: TOOL_CONFIG.openapi_schema,
-        });
-        await tool.save();
-        return newToolIds;
-        } catch (error: unknown) {
-        // If we get a duplicate key error, it means another process created it just now.
-        if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
-            console.log('Race condition detected, re-fetching tool version.');
-            const tool = await ToolVersion.findOne(toolIdentifier);
-            if (!tool) {
-                // This is unlikely but a good safeguard.
-                throw new Error('Failed to fetch tool version after race condition.');
-            }
-            return tool.lyzrToolId;
-        } else {
-            // Re-throw other errors.
-            throw error;
-        }
-    }
+/**
+ * Creates tools for a specific user. Tools are per-user since each has a unique x-token.
+ * We no longer use ToolVersion collection because tools must be created per-user.
+ */
+async function createToolsForUser(apiKey: string, userId: string): Promise<string[]> {
+    console.log(`Creating tools for user: ${userId}`);
+    const toolIds = await createLyzrTool(apiKey, TOOL_CONFIG, userId);
+    console.log(`Created ${toolIds.length} tools for user ${userId}`);
+    return toolIds;
 }
 
 // --- Agent Management ---
@@ -176,13 +149,17 @@ async function createLyzrAgent(apiKey: string, agentConfig: any, allToolIds: str
         agentConfig.agentType
     );
 
+    // Remove agentType from payload (it's for internal use only)
+    const { agentType, ...configWithoutInternal } = agentConfig;
+
     const payload = {
-        ...agentConfig,
+        ...configWithoutInternal,
         tools: agentToolIds,
         tool_usage_description: updatedToolUsageDescription,
+        store_messages: true, // Enable message storage like helpdesk app
     };
 
-    console.log(`Creating ${agentConfig.agentType} agent with tools:`, agentToolIds);
+    console.log(`Creating ${agentType} agent with tools:`, agentToolIds);
 
     const response = await fetch(`${LYZR_AGENT_BASE_URL}/v3/agents/`, {
         method: 'POST',
@@ -210,13 +187,17 @@ async function updateLyzrAgent(apiKey: string, agentId: string, agentConfig: any
         agentConfig.agentType
     );
 
+    // Remove agentType from payload (it's for internal use only)
+    const { agentType, ...configWithoutInternal } = agentConfig;
+
     const payload = {
-        ...agentConfig,
+        ...configWithoutInternal,
         tools: agentToolIds,
         tool_usage_description: updatedToolUsageDescription,
+        store_messages: true, // Enable message storage like helpdesk app
     };
 
-    console.log(`Updating ${agentConfig.agentType} agent with tools:`, agentToolIds);
+    console.log(`Updating ${agentType} agent with tools:`, agentToolIds);
 
     const response = await fetch(`${LYZR_AGENT_BASE_URL}/v3/agents/${agentId}`, {
         method: 'PUT',
@@ -349,7 +330,7 @@ export async function createOrUpdateUserAndAgents(lyzrUser: { id: string; email:
         user.lyzrApiKey = encryptedApiKey; // Always update the key
 
         // Ensure latest tool version exists
-        const toolIds = await ensureToolVersion(lyzrApiKey, lyzrUser.id);
+        const toolIds = await createToolsForUser(lyzrApiKey, lyzrUser.id);
 
         if (user.sourcingAgent.version !== LATEST_SOURCING_AGENT_VERSION) {
             console.log(`Updating sourcing agent for user ${user.email} from v${user.sourcingAgent.version} to v${LATEST_SOURCING_AGENT_VERSION}`);
@@ -372,7 +353,7 @@ export async function createOrUpdateUserAndAgents(lyzrUser: { id: string; email:
             console.log(`Creating new user and agents for ${lyzrUser.email}`);
             
             // We must create tools before creating the agent
-            const toolIds = await ensureToolVersion(lyzrApiKey, lyzrUser.id);
+            const toolIds = await createToolsForUser(lyzrApiKey, lyzrUser.id);
 
             const sourcingAgentId = await createLyzrAgent(lyzrApiKey, SOURCING_AGENT_CONFIG, toolIds);
             const matchingAgentId = await createLyzrAgent(lyzrApiKey, MATCHING_AGENT_CONFIG, toolIds);

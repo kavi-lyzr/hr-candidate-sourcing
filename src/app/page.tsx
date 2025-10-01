@@ -111,7 +111,8 @@ export default function Home() {
         throw new Error(errorData.error || 'Failed to send message');
       }
 
-      const { response: agentResponse, sessionId } = await response.json();
+      const responseData = await response.json();
+      const { response: agentResponse, sessionId } = responseData;
       console.log('[Chat] Received response, session:', sessionId);
       
       // Set session ID if this is a new conversation
@@ -132,9 +133,26 @@ export default function Home() {
 
       let candidates = [];
 
-      // Fetch full candidate details if we found any
-      if (publicIds.length > 0) {
-        console.log('[Chat] Fetching candidate details...');
+      // Try to get candidate data from the tool response first (if available)
+      // This ensures we show ALL profiles that were fetched, not just the ones the agent mentioned
+      if (responseData && responseData.all_profiles) {
+        console.log('[Chat] Using profile data from tool response:', responseData.all_profiles.length, 'profiles');
+        candidates = responseData.all_profiles.map((profile: any) => ({
+          id: profile.public_id,
+          name: profile.full_name,
+          title: profile.job_title || 'No title available',
+          company: profile.company || 'No company',
+          location: profile.location || 'Location not specified',
+          education: profile.education?.[0]?.school || '',
+          summary: profile.about || 'No summary available',
+          companyLogo: profile.company_logo_url || '',
+          profilePic: profile.profile_image_url || '',
+          linkedinUrl: profile.linkedin_url || '',
+          public_id: profile.public_id,
+        }));
+      } else if (publicIds.length > 0) {
+        // Fallback: fetch candidate details from database
+        console.log('[Chat] Fetching candidate details from database...');
         const candidatesResponse = await fetch('/api/candidates/get-by-ids', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -143,9 +161,9 @@ export default function Home() {
 
         if (candidatesResponse.ok) {
           candidates = await candidatesResponse.json();
-          console.log('[Chat] Fetched', candidates.length, 'candidate details');
+          console.log('[Chat] Fetched', candidates.length, 'candidate details from database');
         } else {
-          console.error('[Chat] Failed to fetch candidate details');
+          console.error('[Chat] Failed to fetch candidate details from database');
         }
       }
 
@@ -246,9 +264,10 @@ export default function Home() {
 
         let candidates = [];
 
-        // Fetch full candidate details if we found any
+        // For SSE, we'll need to fetch from database since we don't have tool response data
+        // This is a fallback for the streaming implementation
         if (publicIds.length > 0) {
-          console.log('[SSE] Fetching candidate details...');
+          console.log('[SSE] Fetching candidate details from database...');
           const response = await fetch('/api/candidates/get-by-ids', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
