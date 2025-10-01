@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { FilterDialog } from "@/components/filter-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/AuthProvider";
-import { useSSE } from "@/hooks/use-sse";
 import { toast } from "sonner";
 
 interface Message {
@@ -54,9 +53,50 @@ export default function Home() {
     createdAt: string;
   }>>([]);
   
-  // SSE State
+  // Session State
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const { messages: sseMessages, isDone, error: sseError } = useSSE(currentSessionId);
+
+  // Helper function to render message content with clickable candidate names
+  const renderMessageContent = (content: string) => {
+    // Parse markdown links: [Name](public_id)
+    const parts = [];
+    let lastIndex = 0;
+    const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    let match;
+
+    while ((match = regex.exec(content)) !== null) {
+      // Add text before the match
+      if (match.index > lastIndex) {
+        parts.push(content.substring(lastIndex, match.index));
+      }
+      
+      // Add the clickable link
+      const name = match[1];
+      const publicId = match[2];
+      const linkedinUrl = `https://www.linkedin.com/in/${publicId}`;
+      
+      parts.push(
+        <a
+          key={match.index}
+          href={linkedinUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline font-medium"
+        >
+          {name}
+        </a>
+      );
+      
+      lastIndex = regex.lastIndex;
+    }
+    
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push(content.substring(lastIndex));
+    }
+    
+    return parts.length > 0 ? parts : content;
+  };
   
   const placeholderTexts = useMemo(() => [
     selectedJD ? "Find candidates who match this job description" : "Software engineers in the Bay Area with 2+ years of experience building AI Agents on Lyzr",
@@ -65,12 +105,13 @@ export default function Home() {
     selectedJD ? "Find qualified professionals for your team" : "DevOps engineers in Austin with 2+ years of experience in cloud infrastructure"
   ], [selectedJD]);
   
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+  const handleSearch = async (queryOverride?: string) => {
+    const query = queryOverride || searchQuery;
+    if (!query.trim()) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: searchQuery.trim(),
+      content: query.trim(),
       role: 'user',
       timestamp: new Date(),
     };
@@ -80,7 +121,7 @@ export default function Home() {
     setShowChat(true);
 
     try {
-      console.log('[Chat] Sending message:', searchQuery);
+      console.log('[Chat] Sending message:', query);
       
       // Check if user is authenticated
       if (!isAuthenticated || !userId || !email) {
@@ -95,7 +136,7 @@ export default function Home() {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
         },
         body: JSON.stringify({
-          query: searchQuery.trim(),
+          query: query.trim(),
           jdId: selectedJD || null,
           user: {
             id: userId,
@@ -202,12 +243,9 @@ export default function Home() {
   const handleFollowUp = async (message: string) => {
     if (!message.trim()) return;
     
-    // Set the search query and trigger handleSearch
-    setSearchQuery(message);
-    // Trigger search in next tick to ensure state is updated
-    setTimeout(() => {
-      handleSearch();
-    }, 0);
+    // Clear search query and directly call handleSearch with the message
+    setSearchQuery("");
+    await handleSearch(message);
   };
 
   const deleteConversation = async (sessionId: string) => {
@@ -240,94 +278,6 @@ export default function Home() {
     }
   };
 
-  // Process SSE messages when stream is complete
-  useEffect(() => {
-    if (!isDone || sseMessages.length === 0) return;
-
-    const processStreamResponse = async () => {
-      console.log('[SSE] Processing complete stream:', sseMessages);
-      
-      try {
-        // Combine all SSE chunks into full response
-        const fullResponse = sseMessages.join('');
-        
-        // Parse candidates from markdown links: [Name](public_id)
-        const candidateRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-        const publicIds: string[] = [];
-        let match;
-
-        while ((match = candidateRegex.exec(fullResponse)) !== null) {
-          publicIds.push(match[2]); // public_id
-        }
-
-        console.log('[SSE] Found candidate links:', publicIds);
-
-        let candidates = [];
-
-        // For SSE, we'll need to fetch from database since we don't have tool response data
-        // This is a fallback for the streaming implementation
-        if (publicIds.length > 0) {
-          console.log('[SSE] Fetching candidate details from database...');
-          const response = await fetch('/api/candidates/get-by-ids', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ publicIds }),
-          });
-
-          if (response.ok) {
-            candidates = await response.json();
-            console.log('[SSE] Fetched', candidates.length, 'candidate details');
-          } else {
-            console.error('[SSE] Failed to fetch candidate details');
-            toast.error('Failed to load candidate details');
-          }
-        }
-
-        // Create AI response message
-        const aiResponse: Message = {
-          id: Date.now().toString(),
-          content: fullResponse,
-          role: 'assistant',
-          timestamp: new Date(),
-          candidates: candidates.length > 0 ? candidates : undefined,
-        };
-
-        setMessages(prev => [...prev, aiResponse]);
-        setIsLoading(false);
-        
-        // Reload conversation history to include the new conversation
-        loadConversationHistory();
-        
-        console.log('[SSE] Stream processing complete');
-      } catch (error) {
-        console.error('[SSE] Error processing stream:', error);
-        toast.error('Failed to process search results');
-        setIsLoading(false);
-        setCurrentSessionId(null);
-      }
-    };
-
-    processStreamResponse();
-  }, [isDone, sseMessages]);
-
-  // Handle SSE errors
-  useEffect(() => {
-    if (sseError) {
-      console.error('[SSE] Stream error:', sseError);
-      toast.error(sseError);
-      
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        content: "Connection lost. Please try searching again.",
-        role: 'assistant',
-        timestamp: new Date(),
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-      setIsLoading(false);
-      setCurrentSessionId(null);
-    }
-  }, [sseError]);
 
   // Load conversation history on mount
   useEffect(() => {
@@ -565,9 +515,9 @@ export default function Home() {
                         : 'bg-muted/60 border border-border/30 backdrop-blur-sm'
                     }`}
                   >
-                    <p className={`text-sm leading-relaxed ${message.role === 'user' ? 'text-primary-foreground' : 'text-foreground'}`}>
-                      {message.content}
-                    </p>
+                    <div className={`text-sm leading-relaxed whitespace-pre-wrap ${message.role === 'user' ? 'text-primary-foreground' : 'text-foreground'}`}>
+                      {message.role === 'assistant' ? renderMessageContent(message.content) : message.content}
+                    </div>
                     {message.candidates && (
                       <div className="mt-4 space-y-4">
                         <h4 className="font-semibold text-primary mb-3">Top Recommendations</h4>
@@ -583,8 +533,20 @@ export default function Home() {
                               />
                   <div className="flex-1">
                                 <div className="flex items-center space-x-2 mb-1">
-                                  <h5 className="font-semibold text-primary hover:text-primary/80 cursor-pointer">{candidate.name}</h5>
-                                  <a href="#" className="hover:opacity-80 transition-opacity">
+                                  <a 
+                                    href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-semibold text-primary hover:text-primary/80 hover:underline"
+                                  >
+                                    {candidate.name}
+                                  </a>
+                                  <a 
+                                    href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="hover:opacity-80 transition-opacity"
+                                  >
                           <Image 
                             src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/LinkedIn_icon.svg/1024px-LinkedIn_icon.svg.png" 
                             alt="LinkedIn" 
@@ -660,8 +622,20 @@ export default function Home() {
                                 />
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center space-x-2 mb-1">
-                                    <h5 className="font-semibold text-primary hover:text-primary/80 cursor-pointer truncate">{candidate.name}</h5>
-                                    <a href="#" className="hover:opacity-80 transition-opacity flex-shrink-0">
+                                    <a 
+                                      href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="font-semibold text-primary hover:text-primary/80 hover:underline truncate"
+                                    >
+                                      {candidate.name}
+                                    </a>
+                                    <a 
+                                      href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="hover:opacity-80 transition-opacity flex-shrink-0"
+                                    >
                                       <Image
                                         src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/LinkedIn_icon.svg/1024px-LinkedIn_icon.svg.png"
                                         alt="LinkedIn"
@@ -711,14 +685,9 @@ export default function Home() {
                         <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
                       <span className="text-sm text-muted-foreground">
-                        {sseMessages.length === 0 ? 'Connecting to AI agent...' : 'Searching LinkedIn...'}
+                        Searching for candidates...
                       </span>
                     </div>
-                    {sseMessages.length > 0 && (
-                      <p className="text-sm text-foreground whitespace-pre-wrap">
-                        {sseMessages.join('')}
-                      </p>
-                    )}
                   </div>
                 </div>
               )}
@@ -845,7 +814,7 @@ export default function Home() {
               <Button 
                 className="h-10 px-6"
                 disabled={!searchQuery.trim()}
-                onClick={handleSearch}
+                onClick={() => handleSearch()}
               >
                 Search
               </Button>

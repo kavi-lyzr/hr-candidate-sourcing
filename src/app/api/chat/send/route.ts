@@ -4,8 +4,9 @@ import User from '@/models/user';
 import SearchSession from '@/models/searchSession';
 import { decrypt, chatWithLyzrAgent } from '@/lib/lyzr-services';
 import { availableLocations } from '@/lib/locations';
+import { sessionStorage } from '@/lib/session-storage';
 
-export const maxDuration = 60;
+export const maxDuration = 180; // 3 minutes to allow for tool execution
 
 export async function POST(request: Request) {
     try {
@@ -104,10 +105,28 @@ export async function POST(request: Request) {
 
         console.log('Lyzr response received:', { 
             responseLength: chatResponse.response?.length || 0, 
-            sessionId: chatResponse.session_id 
+            sessionId: chatResponse.session_id
         });
 
-        // 7. Save assistant response to session
+        // 7. Retrieve tool call results from session storage
+        // Try multiple strategies to find the results
+        let toolResults = sessionStorage.getToolResult(finalSessionId, 'search_candidates');
+        
+        if (!toolResults) {
+            // Fallback: try user's latest results
+            toolResults = sessionStorage.getToolResult(`user:${user.id}:latest`, 'search_candidates');
+            console.log('Retrieved tool results from user fallback');
+        } else {
+            console.log('Retrieved tool results from sessionId');
+        }
+
+        const allProfiles = toolResults?.allProfiles || null;
+        console.log('Tool results:', { 
+            found: !!toolResults,
+            profileCount: allProfiles?.length || 0
+        });
+
+        // 8. Save assistant response to session
         searchSession.conversationHistory.push({
             role: 'assistant',
             content: chatResponse.response,
@@ -115,11 +134,17 @@ export async function POST(request: Request) {
         });
         await searchSession.save();
 
-        // 8. Return response
+        // 9. Clean up session storage for this session (keep user fallback)
+        if (toolResults) {
+            sessionStorage.clear(finalSessionId);
+        }
+
+        // 10. Return response with all profiles if available
         return NextResponse.json({
             success: true,
             response: chatResponse.response,
             sessionId: finalSessionId,
+            all_profiles: allProfiles,
             message: 'Chat completed successfully',
         });
 
