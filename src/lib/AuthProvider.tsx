@@ -18,6 +18,7 @@ interface AuthContextType {
     userId: string | null;
     token: string | null;
     email: string | null;
+    displayName: string | null;
     login: () => Promise<void>;
     logout: () => Promise<void>;
 }
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [userId, setUserId] = useState<string | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [email, setEmail] = useState<string | null>(null);
+    const [displayName, setDisplayName] = useState<string | null>(null);
 
     const clearAuthData = () => {
         Cookies.remove('user_id');
@@ -46,14 +48,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUserId(null);
         setToken(null);
         setEmail(null);
+        setDisplayName(null);
         setIsLoading(false);
     };
     
-    const setAuthData = (tokenData: TokenData, userEmail: string | null) => {
+    const setAuthData = (tokenData: TokenData, userEmail: string | null, userName: string | null) => {
         setIsAuthenticated(true);
         setUserId(tokenData.user_id);
         setToken(tokenData.api_key);
         setEmail(userEmail);
+        setDisplayName(userName);
         Cookies.set('user_id', tokenData.user_id, { expires: 7 });
         Cookies.set('token', tokenData.api_key, { expires: 7 });
     };
@@ -82,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
 
                 const nameFromEmail = userEmail ? userEmail.split('@')[0].charAt(0).toUpperCase() + userEmail.split('@')[0].slice(1) : 'User';
+                const finalUserName = userName || nameFromEmail;
 
                 // Sync with backend
                 await fetch('/api/auth', {
@@ -91,13 +96,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         user: {
                             id: tokenData[0].user_id,
                             email: userEmail,
-                            name: userName || nameFromEmail,
+                            name: finalUserName,
                         },
                         lyzrApiKey: tokenData[0].api_key,
                     }),
                 });
 
-                setAuthData(tokenData[0], userEmail);
+                setAuthData(tokenData[0], userEmail, finalUserName);
 
             } else {
                 clearAuthData();
@@ -115,6 +120,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const { default: lyzr } = await import('lyzr-agent');
             await lyzr.logout(); // Ensure clean state before attempting login
+            await lyzr.init('pk_c14a2728e715d9ea67bf');
+            await clearAuthData();
+            await checkAuth();
             await lyzr.getKeys(); // This will trigger the login modal
         } catch (error) {
             console.error('Login failed:', error);
@@ -127,8 +135,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const { default: lyzr } = await import('lyzr-agent');
             await lyzr.logout();
             clearAuthData();
+            window.location.href = window.location.origin;
             // Immediately trigger the login flow again
-            await login();
+            // await login();
         } catch (error) {
             console.error('Logout failed:', error);
             clearAuthData();
@@ -172,7 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, isLoading, userId, token, email, login, logout }}>
+        <AuthContext.Provider value={{ isAuthenticated, isLoading, userId, token, email, displayName, login, logout }}>
             {children}
         </AuthContext.Provider>
     );

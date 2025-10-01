@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterDialog } from "@/components/filter-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/lib/AuthProvider";
 
 interface Message {
   id: string;
@@ -27,6 +28,7 @@ interface Message {
 }
 
 export default function Home() {
+  const { isAuthenticated } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterDialogOpen, setFilterDialogOpen] = useState(false);
   const [showChat, setShowChat] = useState(false);
@@ -203,8 +205,10 @@ export default function Home() {
   }, [charIndex, isTyping, currentTextIndex, searchQuery, placeholderTexts, isClient]);
 
 
-  // Load JDs from API on component mount
+  // Load JDs from API only when authenticated
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     const fetchJDs = async () => {
       try {
         const response = await fetch('/api/jds');
@@ -221,7 +225,7 @@ export default function Home() {
 
     setIsClient(true);
     fetchJDs();
-  }, []);
+  }, [isAuthenticated]);
 
   if (showChat) {
     return (

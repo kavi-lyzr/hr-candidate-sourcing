@@ -6,13 +6,17 @@ import { Button } from '@/components/ui/button';
 import { IconBell, IconLoader2 } from '@tabler/icons-react';
 import { INotificationDocument } from '@/models/notification';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/lib/AuthProvider';
 
 export function NotificationBell() {
+  const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<INotificationDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
 
   const fetchNotifications = async () => {
+    if (!isAuthenticated) return;
+    
     setIsLoading(true);
     try {
       const response = await fetch('/api/notifications');
@@ -26,8 +30,10 @@ export function NotificationBell() {
   };
 
   useEffect(() => {
-    fetchNotifications();
-  }, []);
+    if (isAuthenticated) {
+      fetchNotifications();
+    }
+  }, [isAuthenticated]);
 
   const handleOpenChange = async (open: boolean) => {
     setIsOpen(open);

@@ -45,4 +45,4 @@ next-env.d.ts
 .legacy/
 .vercel
 .env*.local
-# archive/
+archive/

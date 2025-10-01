@@ -9,8 +9,10 @@ import { CreateJdDialog } from '@/components/CreateJdDialog';
 import { ViewJdDialog } from '@/components/ViewJdDialog';
 import { DeleteJdDialog } from '@/components/DeleteJdDialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/lib/AuthProvider';
 
 export default function JDLibraryPage() {
+  const { isAuthenticated } = useAuth();
   const [jds, setJds] = useState<IJobDescriptionDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -20,6 +22,8 @@ export default function JDLibraryPage() {
   const [selectedJd, setSelectedJd] = useState<IJobDescriptionDocument | null>(null);
 
   const fetchJds = async () => {
+    if (!isAuthenticated) return;
+    
     setIsLoading(true);
     try {
       const response = await fetch('/api/jds');
@@ -35,8 +39,10 @@ export default function JDLibraryPage() {
   };
 
   useEffect(() => {
-    fetchJds();
-  }, []);
+    if (isAuthenticated) {
+      fetchJds();
+    }
+  }, [isAuthenticated]);
 
   const handleView = (jd: IJobDescriptionDocument) => {
     setSelectedJd(jd);
