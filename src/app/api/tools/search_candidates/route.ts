@@ -6,7 +6,8 @@ import connectDB from '@/lib/db';
 import CandidateProfile from '@/models/candidateProfile';
 import User from '@/models/user';
 
-export const maxDuration = 360; // Set timeout to 60 seconds for this API route
+export const maxDuration = 180; // Set timeout to 3 minutes for this API route
+const MAX_LIMIT = 50;
 
 // Allow CORS for tool calls from Lyzr Studio
 export async function OPTIONS(request: Request) {
@@ -58,11 +59,11 @@ export async function POST(request: Request) {
             current_company_names = [],
             past_company_names = [],
             geo_codes = [],
-            limit = 25
+            limit = MAX_LIMIT
         } = body;
 
         // Cap limit to prevent overwhelming the system
-        const maxLimit = Math.min(limit, 25);
+        const maxLimit = Math.min(limit, MAX_LIMIT);
 
         // 3. Validate required parameters
         if (!keywords || typeof keywords !== 'string' || keywords.trim() === '') {
