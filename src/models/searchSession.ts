@@ -7,6 +7,8 @@ export interface ISearchSession {
   attachedJd?: mongoose.Types.ObjectId;
   conversationHistory: { role: string; content: string; timestamp: Date }[];
   schemaVersion: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface ISearchSessionDocument extends ISearchSession, Document {

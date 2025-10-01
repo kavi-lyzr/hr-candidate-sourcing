@@ -80,15 +80,15 @@ export default function Home() {
     setShowChat(true);
 
     try {
-      console.log('[Search] Starting search with query:', searchQuery);
+      console.log('[Chat] Sending message:', searchQuery);
       
       // Check if user is authenticated
       if (!isAuthenticated || !userId || !email) {
         throw new Error('User not authenticated');
       }
 
-      // Call start-search API with token + user info
-      const response = await fetch('/api/chat/start-search', {
+      // Call non-streaming chat API
+      const response = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -101,28 +101,76 @@ export default function Home() {
             id: userId,
             email: email,
             name: displayName
-          }
+          },
+          sessionId: currentSessionId, // Use existing session for follow-ups
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to start search');
+        throw new Error(errorData.error || 'Failed to send message');
       }
 
-      const { sessionId } = await response.json();
-      console.log('[Search] Received session ID:', sessionId);
+      const { response: agentResponse, sessionId } = await response.json();
+      console.log('[Chat] Received response, session:', sessionId);
       
-      // Connect to SSE stream
-      setCurrentSessionId(sessionId);
+      // Set session ID if this is a new conversation
+      if (!currentSessionId) {
+        setCurrentSessionId(sessionId);
+      }
+
+      // Parse candidates from markdown links: [Name](public_id)
+      const candidateRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+      const publicIds: string[] = [];
+      let match;
+
+      while ((match = candidateRegex.exec(agentResponse)) !== null) {
+        publicIds.push(match[2]); // public_id
+      }
+
+      console.log('[Chat] Found candidate links:', publicIds);
+
+      let candidates = [];
+
+      // Fetch full candidate details if we found any
+      if (publicIds.length > 0) {
+        console.log('[Chat] Fetching candidate details...');
+        const candidatesResponse = await fetch('/api/candidates/get-by-ids', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ publicIds }),
+        });
+
+        if (candidatesResponse.ok) {
+          candidates = await candidatesResponse.json();
+          console.log('[Chat] Fetched', candidates.length, 'candidate details');
+        } else {
+          console.error('[Chat] Failed to fetch candidate details');
+        }
+      }
+
+      // Create AI response message
+      const aiResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        content: agentResponse,
+        role: 'assistant',
+        timestamp: new Date(),
+        candidates: candidates.length > 0 ? candidates : undefined,
+      };
+
+      setMessages(prev => [...prev, aiResponse]);
+      setIsLoading(false);
+      
+      // Reload conversation history
+      loadConversationHistory();
 
     } catch (error) {
-      console.error('[Search] Error:', error);
-      toast.error('Failed to start search. Please try again.');
+      console.error('[Chat] Error:', error);
+      toast.error('Failed to send message. Please try again.');
       
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "I'm sorry, I encountered an error while starting the search. Please try again.",
+        content: `I'm sorry, I encountered an error. Please try again. (${error})`,
         role: 'assistant',
         timestamp: new Date(),
       };
@@ -135,30 +183,43 @@ export default function Home() {
 
   const handleFollowUp = async (message: string) => {
     if (!message.trim()) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: message,
-      role: 'user',
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
-
-    // TODO: Implement follow-up conversation with same session
-    // For now, just show a message
+    
+    // Set the search query and trigger handleSearch
+    setSearchQuery(message);
+    // Trigger search in next tick to ensure state is updated
     setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "Follow-up conversations are coming soon! For now, please start a new search.",
-        role: 'assistant',
-        timestamp: new Date(),
-      };
+      handleSearch();
+    }, 0);
+  };
 
-      setMessages(prev => [...prev, aiResponse]);
-      setIsLoading(false);
-    }, 1000);
+  const deleteConversation = async (sessionId: string) => {
+    try {
+      const response = await fetch(`/api/chat/session/${sessionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
+        }
+      });
+
+      if (response.ok) {
+        toast.success('Conversation deleted');
+        
+        // If we're deleting the current session, reset the UI
+        if (sessionId === currentSessionId) {
+          setMessages([]);
+          setShowChat(false);
+          setCurrentSessionId(null);
+        }
+        
+        // Reload history
+        loadConversationHistory();
+      } else {
+        toast.error('Failed to delete conversation');
+      }
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      toast.error('Failed to delete conversation');
+    }
   };
 
   // Process SSE messages when stream is complete
@@ -394,7 +455,7 @@ export default function Home() {
         {/* Chat Interface */}
         <div className="flex flex-col h-screen">
           {/* Fixed Header with Controls */}
-          <div className="fixed top-4 right-4 z-30 flex items-center gap-2">
+          <div className="fixed top-32 right-4 z-30 flex items-center gap-2">
             {/* History dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -409,15 +470,31 @@ export default function Home() {
                     {conversationHistory.map((conversation) => (
                       <DropdownMenuItem
                         key={conversation.sessionId}
-                        onClick={() => loadConversation(conversation.sessionId)}
-                        className="flex flex-col items-start gap-1 p-3 cursor-pointer"
+                        className="flex items-center justify-between gap-2 p-3 cursor-pointer"
+                        onSelect={(e) => e.preventDefault()}
                       >
-                        <div className="font-medium text-sm truncate w-full">
-                          {conversation.title}
+                        <div 
+                          className="flex-1 flex flex-col items-start gap-1"
+                          onClick={() => loadConversation(conversation.sessionId)}
+                        >
+                          <div className="font-medium text-sm truncate w-full">
+                            {conversation.title}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {new Date(conversation.lastUpdated).toLocaleDateString()} • {conversation.messageCount} messages
+                          </div>
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(conversation.lastUpdated).toLocaleDateString()} • {conversation.messageCount} messages
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteConversation(conversation.sessionId);
+                          }}
+                        >
+                          ×
+                        </Button>
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuSeparator />

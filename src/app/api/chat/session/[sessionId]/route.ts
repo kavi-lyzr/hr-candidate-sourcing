@@ -93,3 +93,43 @@ export async function PUT(
     }
 }
 
+// Delete conversation
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ sessionId: string }> }
+) {
+    try {
+        // Validate authentication token
+        const authHeader = request.headers.get('authorization');
+        const expectedToken = process.env.API_AUTH_TOKEN;
+        
+        if (!authHeader || !expectedToken || authHeader !== `Bearer ${expectedToken}`) {
+            return NextResponse.json({ error: 'Unauthorized - Invalid token' }, { status: 401 });
+        }
+
+        const { sessionId } = await params;
+
+        // Connect to DB and delete session
+        await connectDB();
+        const session = await SearchSession.findByIdAndDelete(sessionId);
+        
+        if (!session) {
+            return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+        }
+
+        console.log(`Deleted session: ${sessionId}`);
+
+        return NextResponse.json({
+            success: true,
+            message: 'Session deleted successfully'
+        });
+
+    } catch (error: any) {
+        console.error('Error deleting session:', error);
+        return NextResponse.json({
+            error: 'Failed to delete session',
+            details: error.message,
+        }, { status: 500 });
+    }
+}
+

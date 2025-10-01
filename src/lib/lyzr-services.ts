@@ -237,6 +237,59 @@ async function updateLyzrAgent(apiKey: string, agentId: string, agentConfig: any
 /**
  * Stream chat with a Lyzr Agent
  */
+/**
+ * Chat with Lyzr Agent (Non-streaming)
+ */
+export async function chatWithLyzrAgent(
+    apiKey: string,
+    agentId: string,
+    message: string,
+    userEmail: string,
+    systemPromptVariables: Record<string, any> = {},
+    sessionId?: string
+): Promise<{ response: string; session_id: string }> {
+    const finalSessionId = sessionId || `${agentId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
+    const requestBody = {
+        user_id: userEmail,
+        agent_id: agentId,
+        session_id: finalSessionId,
+        message: message,
+        system_prompt_variables: systemPromptVariables,
+        filter_variables: {},
+        features: [],
+        assets: []
+    };
+
+    console.log('Chat request (non-streaming):', JSON.stringify(requestBody, null, 2));
+
+    const response = await fetch(`${LYZR_AGENT_BASE_URL}/v3/inference/chat/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+        },
+        body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Chat failed:', response.status, errorText);
+        throw new Error(`Failed to chat with agent: ${response.status} ${errorText}`);
+    }
+
+    const data = await response.json();
+    console.log('Chat response:', data);
+    
+    return {
+        response: data.response, // Note: using 'response' not 'agent_response'
+        session_id: data.session_id || finalSessionId,
+    };
+}
+
+/**
+ * Stream chat with Lyzr Agent (Streaming - for future use)
+ */
 export async function streamChatWithAgent(
     apiKey: string,
     agentId: string,
