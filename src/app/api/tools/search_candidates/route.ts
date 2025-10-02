@@ -5,7 +5,7 @@ import { availableLocations } from '@/lib/locations';
 import connectDB from '@/lib/db';
 import CandidateProfile from '@/models/candidateProfile';
 import User from '@/models/user';
-import { sessionStorage } from '@/lib/session-storage';
+import SearchSession from '@/models/searchSession';
 
 export const maxDuration = 180; // Set timeout to 3 minutes for this API route
 const MAX_LIMIT = 50;
@@ -23,6 +23,11 @@ export async function OPTIONS(request: Request) {
 }
 
 export async function POST(request: Request) {
+    console.log('\n🔧 ========== TOOL CALL RECEIVED ==========');
+    console.log('⏰ Timestamp:', new Date().toISOString());
+    console.log('🌐 Request URL:', request.url);
+    console.log('📋 Headers:', Object.fromEntries(request.headers.entries()));
+    
     // Set CORS headers for tool calls
     const corsHeaders = {
         'Access-Control-Allow-Origin': '*',
@@ -34,11 +39,13 @@ export async function POST(request: Request) {
         // 1. Authenticate user via x-token
         const token = request.headers.get('x-token');
         if (!token) {
+            console.error('❌ Missing x-token header');
             return NextResponse.json({ error: 'Missing authentication token' }, { 
                 status: 401,
                 headers: corsHeaders 
             });
         }
+        console.log('✅ x-token header present');
 
         let userId: string;
         try {
@@ -50,19 +57,12 @@ export async function POST(request: Request) {
             });
         }
 
-        // 2. Parse request body and headers
+        // 2. Parse request body
         const body = await request.json();
-        console.log('Received call to /api/tools/search_candidates with body:', body);
+        console.log('📦 Tool call body:', JSON.stringify(body, null, 2));
         
-        // Try to get sessionId from multiple sources
-        const sessionId = body.session_id || 
-                         request.headers.get('x-session-id') || 
-                         request.headers.get('session-id') ||
-                         `${userId}-${Date.now()}`; // Fallback: create temp ID
-        
-        console.log('SessionId for tool call:', sessionId);
-
         const {
+            session_id,
             keywords,
             title_keywords = [],
             current_company_names = [],
@@ -70,6 +70,18 @@ export async function POST(request: Request) {
             geo_codes = [],
             limit = MAX_LIMIT
         } = body;
+
+        if (!session_id) {
+            console.error('❌ Missing required parameter: session_id');
+            return NextResponse.json({ 
+                error: 'session_id is required. The agent must pass the session_id from system context.' 
+            }, { 
+                status: 400,
+                headers: corsHeaders 
+            });
+        }
+        
+        console.log('✅ Session ID:', session_id);
 
         // Cap limit to prevent overwhelming the system
         const maxLimit = Math.min(limit, MAX_LIMIT);
@@ -207,11 +219,23 @@ export async function POST(request: Request) {
 
         console.log(`Successfully processed ${formattedProfiles.length} candidates`);
 
-        // 8. Store results in session storage for retrieval by chat endpoint
-        // Store by both sessionId and userId (as fallback) 
-        sessionStorage.set(sessionId, 'search_candidates', { allProfiles });
-        sessionStorage.set(`user:${userId}:latest`, 'search_candidates', { allProfiles });
-        console.log(`Stored results in session storage for sessionId: ${sessionId} and userId: ${userId}`);
+        // 8. Store results in database for retrieval by chat endpoint
+        try {
+            const session = await SearchSession.findById(session_id);
+            if (session) {
+                session.toolResults = {
+                    allProfiles,
+                    timestamp: new Date(),
+                };
+                await session.save();
+                console.log(`✅ Stored ${allProfiles.length} profiles in database for session: ${session_id}`);
+            } else {
+                console.warn(`⚠️  Session ${session_id} not found in database. Results will still be returned to agent.`);
+            }
+        } catch (dbError: any) {
+            console.error('❌ Failed to store results in database:', dbError.message);
+            // Don't fail the tool call, just log the error
+        }
 
         // 9. Return formatted profiles for agent + all profiles for frontend
         return NextResponse.json({ 

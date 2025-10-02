@@ -6,6 +6,10 @@ export interface ISearchSession {
   initialQuery: string;
   attachedJd?: mongoose.Types.ObjectId;
   conversationHistory: { role: string; content: string; timestamp: Date }[];
+  toolResults?: {
+    allProfiles?: any[];
+    timestamp?: Date;
+  };
   schemaVersion: number;
   createdAt?: Date;
   updatedAt?: Date;
@@ -28,6 +32,13 @@ const SearchSessionSchema: Schema<ISearchSessionDocument> = new Schema<ISearchSe
         timestamp: { type: Date, required: true },
       },
     ],
+    toolResults: {
+      type: {
+        allProfiles: { type: Schema.Types.Mixed },
+        timestamp: { type: Date },
+      },
+      required: false,
+    },
     schemaVersion: { type: Number, default: 1 },
   },
   { timestamps: true }

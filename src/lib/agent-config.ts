@@ -1,7 +1,7 @@
-export const LATEST_SOURCING_AGENT_VERSION = '1.2.1';
+export const LATEST_SOURCING_AGENT_VERSION = '1.3.0';
 export const LATEST_MATCHING_AGENT_VERSION = '1.2.1';
 export const LATEST_PROFILE_SUMMARY_AGENT_VERSION = '1.2.1';
-export const LATEST_TOOL_VERSION = '1.0.3';
+export const LATEST_TOOL_VERSION = '1.1.0';
 
 export const SOURCING_AGENT_CONFIG = {
     agentType: 'sourcing',
@@ -17,9 +17,42 @@ export const SOURCING_AGENT_CONFIG = {
 4. After the tool returns a list of candidate profiles with summaries, review them carefully.
 5. Present the most promising candidates to the user in a concise, helpful summary. For each candidate you mention, you MUST format their name as a Markdown link, using their full name as the text and their \`public_id\` as the URL. Example: \`[Elizabeth Waller](elizabeth-waller-11b53121)\`.
 
+**HOW TO USE THE search_candidates TOOL:**
+The tool accepts these parameters:
+- \`session_id\` (REQUIRED, string): **CRITICAL** - Always use {{ session_id }} from your context
+- \`keywords\` (REQUIRED, string): Main search terms (e.g., "React developer", "Data Scientist Python", "Full Stack Engineer")
+- \`title_keywords\` (optional, array of strings): Keywords for job titles (e.g., ["Software Engineer", "Developer"])
+- \`current_company_names\` (optional, array of strings): Current employers (e.g., ["Google", "Microsoft"])
+- \`past_company_names\` (optional, array of strings): Previous employers (e.g., ["Amazon", "Meta"])
+- \`geo_codes\` (optional, array of strings): Location IDs from the available locations list below
+- \`limit\` (optional, number): Max candidates to return (default: 25)
+
+**Example Tool Calls:**
+1. For "React developers in Bangalore with 2+ years": 
+   \`\`\`
+   {
+     "session_id": "{{ session_id }}",
+     "keywords": "React developer 2 years experience",
+     "title_keywords": ["React Developer", "Frontend Engineer", "Software Engineer"],
+     "geo_codes": ["112376381"]
+   }
+   \`\`\`
+
+2. For "Data Scientists at Google in USA":
+   \`\`\`
+   {
+     "session_id": "{{ session_id }}",
+     "keywords": "Data Scientist machine learning",
+     "current_company_names": ["Google"],
+     "geo_codes": ["103644278"]
+   }
+   \`\`\`
+
+**IMPORTANT:** You MUST always include \`session_id\` with the value {{ session_id }} in every tool call.
+
 **CRITICAL CONTEXT:**
-- You must use the provided list of geographical locations and their IDs for the \`geo_codes\` parameter. The available locations are: {{ available_locations }}.
-- If a location is not on the list, use the closest available location or politely inform the user about this limitation.
+- Available locations with their IDs: {{ available_locations }}
+- If a location is not on the list, use the closest available location or politely inform the user.
 - Current date and time is: {{ datetime }}.
 - The user's name is: {{ user_name }}.`,
     agent_goal: "To relentlessly analyze user requirements and leverage the search tool until a satisfactory list of high-quality candidate profiles is found and presented to the user, ensuring the sourcing task is completed.",
@@ -119,7 +152,7 @@ export const tools = {
     "openapi": "3.0.0",
     "info": {
         "title": "HR Sourcing & Matching API",
-        "version": "1.0.3",
+        "version": "1.1.0",
         "description": "A unified API for the HR Sourcing Agent. It provides tools to search for candidates on LinkedIn, rank candidates, and generate profile summaries."
     },
     "servers": [
@@ -141,12 +174,17 @@ export const tools = {
                             "schema": {
                                 "type": "object",
                                 "required": [
-                                    "keywords"
+                                    "keywords",
+                                    "session_id"
                                 ],
                                 "properties": {
+                                    "session_id": {
+                                        "type": "string",
+                                        "description": "The session ID for this search. CRITICAL: You must pass the session_id from your system context."
+                                    },
                                     "keywords": {
                                         "type": "string",
-                                        "description": "General keywords to search for in profiles. This is the only required parameter."
+                                        "description": "General keywords to search for in profiles."
                                     },
                                     "title_keywords": {
                                         "type": "array",

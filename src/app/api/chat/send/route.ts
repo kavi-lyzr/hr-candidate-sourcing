@@ -4,7 +4,6 @@ import User from '@/models/user';
 import SearchSession from '@/models/searchSession';
 import { decrypt, chatWithLyzrAgent } from '@/lib/lyzr-services';
 import { availableLocations } from '@/lib/locations';
-import { sessionStorage } from '@/lib/session-storage';
 
 export const maxDuration = 180; // 3 minutes to allow for tool execution
 
@@ -78,6 +77,7 @@ export async function POST(request: Request) {
         // 5. Prepare system prompt variables
         const systemPromptVariables = {
             user_name: user.name || user.email.split('@')[0],
+            session_id: finalSessionId, // Pass session ID to agent for tool calls
             available_locations: Object.entries(availableLocations)
                 .map(([name, code]) => `${name}: ${code}`)
                 .join(', '),
@@ -108,21 +108,11 @@ export async function POST(request: Request) {
             sessionId: chatResponse.session_id
         });
 
-        // 7. Retrieve tool call results from session storage
-        // Try multiple strategies to find the results
-        let toolResults = sessionStorage.getToolResult(finalSessionId, 'search_candidates');
-        
-        if (!toolResults) {
-            // Fallback: try user's latest results
-            toolResults = sessionStorage.getToolResult(`user:${user.id}:latest`, 'search_candidates');
-            console.log('Retrieved tool results from user fallback');
-        } else {
-            console.log('Retrieved tool results from sessionId');
-        }
-
-        const allProfiles = toolResults?.allProfiles || null;
-        console.log('Tool results:', { 
-            found: !!toolResults,
+        // 7. Reload session from database to get tool results that were stored by the tool
+        const updatedSession = await SearchSession.findById(finalSessionId);
+        const allProfiles = updatedSession?.toolResults?.allProfiles || null;
+        console.log('Tool results from database:', { 
+            found: !!allProfiles,
             profileCount: allProfiles?.length || 0
         });
 
@@ -134,12 +124,7 @@ export async function POST(request: Request) {
         });
         await searchSession.save();
 
-        // 9. Clean up session storage for this session (keep user fallback)
-        if (toolResults) {
-            sessionStorage.clear(finalSessionId);
-        }
-
-        // 10. Return response with all profiles if available
+        // 9. Return response with all profiles if available
         return NextResponse.json({
             success: true,
             response: chatResponse.response,
