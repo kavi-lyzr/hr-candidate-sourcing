@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { ChevronDown, School, MapPin, Settings, Bookmark, Sparkles, History, RefreshCw, User, Bot } from "lucide-react";
+import { ChevronDown, School, MapPin, Settings, Bookmark, Sparkles, History, RefreshCw, User, Bot, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterDialog } from "@/components/filter-dialog";
@@ -52,9 +52,13 @@ export default function Home() {
     lastUpdated: string;
     createdAt: string;
   }>>([]);
-  
+
   // Session State
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const profilesPerPage = 10;
 
   // Helper function to render message content with clickable candidate names
   const renderMessageContent = (content: string) => {
@@ -187,8 +191,10 @@ export default function Home() {
           education: profile.education?.[0]?.school || '',
           summary: profile.about || 'No summary available',
           companyLogo: profile.company_logo_url || '',
-          profilePic: profile.profile_image_url || '',
-          linkedinUrl: profile.linkedin_url || '',
+          profilePic: profile.profile_image_url
+            ? `${profile.profile_image_url}?w=100&h=100&fit=crop&crop=face`
+            : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
+          linkedinUrl: profile.linkedin_url || `https://www.linkedin.com/in/${profile.public_id}`,
           public_id: profile.public_id,
         }));
       } else if (publicIds.length > 0) {
@@ -201,7 +207,14 @@ export default function Home() {
         });
 
         if (candidatesResponse.ok) {
-          candidates = await candidatesResponse.json();
+          const dbCandidates = await candidatesResponse.json();
+          candidates = dbCandidates.map((candidate: any) => ({
+            ...candidate,
+            profilePic: candidate.profile_image_url
+              ? `${candidate.profile_image_url}?w=100&h=100&fit=crop&crop=face`
+              : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
+            linkedinUrl: candidate.linkedin_url || `https://www.linkedin.com/in/${candidate.public_id}`,
+          }));
           console.log('[Chat] Fetched', candidates.length, 'candidate details from database');
         } else {
           console.error('[Chat] Failed to fetch candidate details from database');
@@ -312,11 +325,12 @@ export default function Home() {
       // Conversation is already saved in database, just reload history
       loadConversationHistory();
     }
-    
+
     setMessages([]);
     setShowChat(false);
     setIsLoading(false);
     setCurrentSessionId(null);
+    setCurrentPage(1); // Reset pagination
   };
 
   const loadConversation = async (sessionId: string) => {
@@ -345,7 +359,8 @@ export default function Home() {
         setMessages(loadedMessages);
         setCurrentSessionId(sessionId);
         setShowChat(true);
-        
+        setCurrentPage(1); // Reset pagination for new conversation
+
         console.log(`Loaded ${loadedMessages.length} messages`);
       } else {
         toast.error('Failed to load conversation');
@@ -522,7 +537,7 @@ export default function Home() {
                       <div className="mt-4 space-y-4">
                         <h4 className="font-semibold text-primary mb-3">Top Recommendations</h4>
                         {message.candidates.slice(0, 3).map((candidate) => (
-                          <div key={candidate.id} className="border rounded-lg p-4 bg-card/50 hover:bg-card transition-colors">
+                            <div key={candidate.id} className="border rounded-lg p-4 bg-card/50 hover:bg-card transition-colors">
                             <div className="flex items-start space-x-3">
                               <Image
                                 src={candidate.profilePic || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"}
@@ -530,6 +545,10 @@ export default function Home() {
                                 width={48}
                                 height={48}
                                 className="rounded-full object-cover flex-shrink-0"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face";
+                                }}
                               />
                   <div className="flex-1">
                                 <div className="flex items-center space-x-2 mb-1">
@@ -557,12 +576,16 @@ export default function Home() {
                     </div>
                     <div className="flex items-center space-x-2 mb-1">
                                   {candidate.companyLogo && (
-                        <Image 
-                          src={candidate.companyLogo} 
-                          alt={candidate.company} 
+                        <Image
+                          src={candidate.companyLogo}
+                          alt={candidate.company}
                           width={16}
                           height={16}
                           className="w-4 h-4 object-contain"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
                         />
                                   )}
                                   <p className="text-sm text-foreground font-medium">{candidate.title}</p>
@@ -592,12 +615,18 @@ export default function Home() {
                           </div>
                         ))}
 
-                        {/* All Profiles Section */}
+                        {/* All Profiles Section with Pagination */}
                         <div className="mt-8">
                           <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-lg font-medium text-foreground">All Profiles ({message.candidates.length})</h4>
+                            <h4 className="text-lg font-medium text-foreground">All Profiles ({message.candidates?.length || 0})</h4>
                             <div className="flex items-center gap-2">
-                              <div className="text-sm text-muted-foreground">1 - {message.candidates.length} of {message.candidates.length}</div>
+                              <div className="text-sm text-muted-foreground">
+                                {message.candidates && (
+                                  <>
+                                    {Math.min((currentPage - 1) * profilesPerPage + 1, message.candidates.length)} - {Math.min(currentPage * profilesPerPage, message.candidates.length)} of {message.candidates.length}
+                                  </>
+                                )}
+                              </div>
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -610,8 +639,62 @@ export default function Home() {
                             </div>
                           </div>
 
+                          {/* Pagination Controls */}
+                          {message.candidates && message.candidates.length > profilesPerPage && (
+                            <div className="flex items-center justify-center mb-4">
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                  disabled={currentPage === 1}
+                                >
+                                  <ChevronLeft className="h-4 w-4" />
+                                  Previous
+                                </Button>
+
+                                <div className="flex items-center space-x-1">
+                                  {message.candidates && Array.from({ length: Math.min(5, Math.ceil(message.candidates.length / profilesPerPage)) }, (_, i) => {
+                                    const pageNumber = Math.max(1, Math.min(
+                                      currentPage - 2 + i,
+                                      Math.ceil(message.candidates.length / profilesPerPage)
+                                    ));
+                                    return (
+                                      <Button
+                                        key={pageNumber}
+                                        variant={currentPage === pageNumber ? "default" : "outline"}
+                                        size="sm"
+                                        onClick={() => setCurrentPage(pageNumber)}
+                                        className="min-w-8"
+                                      >
+                                        {pageNumber}
+                                      </Button>
+                                    );
+                                  })}
+                                </div>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setCurrentPage(prev => message.candidates ? Math.min(Math.ceil(message.candidates.length / profilesPerPage), prev + 1) : prev)}
+                                  disabled={currentPage === (message.candidates ? Math.ceil(message.candidates.length / profilesPerPage) : 1)}
+                                >
+                                  Next
+                                  <ChevronRight className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
                           <div className="space-y-3">
-                            {message.candidates.map((candidate) => (
+                            {(() => {
+                              if (!message.candidates) return null;
+
+                              const startIndex = (currentPage - 1) * profilesPerPage;
+                              const endIndex = startIndex + profilesPerPage;
+                              const paginatedCandidates = message.candidates.slice(startIndex, endIndex);
+
+                              return paginatedCandidates.map((candidate) => (
                               <div key={candidate.id} className="flex items-center space-x-3 p-3 border rounded-lg bg-card hover:bg-card/80 transition-colors">
                                 <Image
                                   src={candidate.profilePic || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"}
@@ -619,6 +702,10 @@ export default function Home() {
                                   width={40}
                                   height={40}
                                   className="rounded-full object-cover flex-shrink-0"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face";
+                                  }}
                                 />
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center space-x-2 mb-1">
@@ -651,7 +738,8 @@ export default function Home() {
                                   Save
                                 </Button>
                               </div>
-                            ))}
+                              ));
+                            })()}
                         </div>
                         </div>
                       </div>
