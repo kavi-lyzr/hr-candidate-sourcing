@@ -55,6 +55,7 @@ export default function Home() {
 
   // Session State
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [savedProfiles, setSavedProfiles] = useState<Set<string>>(new Set());
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -253,6 +254,59 @@ export default function Home() {
     setSearchQuery("");
   };
 
+  const handleToggleSave = async (candidatePublicId: string) => {
+    if (!currentSessionId) {
+      toast.error("Cannot save profile without an active session.");
+      return;
+    }
+
+    // Optimistic UI update
+    const newSavedProfiles = new Set(savedProfiles);
+    const isCurrentlySaved = newSavedProfiles.has(candidatePublicId);
+    if (isCurrentlySaved) {
+      newSavedProfiles.delete(candidatePublicId);
+    } else {
+      newSavedProfiles.add(candidatePublicId);
+    }
+    setSavedProfiles(newSavedProfiles);
+
+    try {
+      const response = await fetch('/api/profiles/toggle-save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
+        },
+        body: JSON.stringify({
+          candidatePublicId,
+          sessionId: currentSessionId,
+          user: {
+            id: userId,
+            email: email,
+          }
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(data.message);
+      } else {
+        throw new Error('Failed to update saved status');
+      }
+    } catch (error) {
+      console.error('Error toggling save:', error);
+      toast.error('Failed to update profile.');
+      // Revert optimistic update on failure
+      const revertedSavedProfiles = new Set(savedProfiles);
+      if (isCurrentlySaved) {
+        revertedSavedProfiles.add(candidatePublicId);
+      } else {
+        revertedSavedProfiles.delete(candidatePublicId);
+      }
+      setSavedProfiles(revertedSavedProfiles);
+    }
+  };
+
   const handleFollowUp = async (message: string) => {
     if (!message.trim()) return;
     
@@ -297,6 +351,30 @@ export default function Home() {
     if (isAuthenticated && userId) {
       loadConversationHistory();
     }
+  }, [isAuthenticated, userId]);
+
+  // Fetch saved profiles on mount
+  useEffect(() => {
+    if (!isAuthenticated || !userId) return;
+
+    const fetchSavedProfiles = async () => {
+      try {
+        const response = await fetch(`/api/profiles/saved?userId=${userId}`, {
+          headers: {
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setSavedProfiles(new Set(data.savedProfileIds || []));
+          console.log(`Loaded ${data.savedProfileIds?.length || 0} saved profiles`);
+        }
+      } catch (error) {
+        console.error('Error fetching saved profiles:', error);
+      }
+    };
+
+    fetchSavedProfiles();
   }, [isAuthenticated, userId]);
 
   const loadConversationHistory = async () => {
@@ -597,9 +675,14 @@ export default function Home() {
                                   </div>
                                 </div>
                               </div>
-                              <Button size="sm" variant="outline" className="text-primary border-primary hover:bg-primary/5 flex-shrink-0">
+                              <Button 
+                                size="sm" 
+                                variant={savedProfiles.has(candidate.public_id) ? "default" : "outline"}
+                                className="text-primary border-primary hover:bg-primary/5 flex-shrink-0"
+                                onClick={() => handleToggleSave(candidate.public_id)}
+                              >
                                 <Bookmark className="w-4 h-4 mr-1" />
-                                Save
+                                {savedProfiles.has(candidate.public_id) ? "Saved" : "Save"}
                               </Button>
                             </div>
                           </div>
@@ -717,9 +800,14 @@ export default function Home() {
                                   </div>
                                   <p className="text-sm text-muted-foreground truncate">{candidate.title}</p>
                                 </div>
-                                <Button size="sm" variant="outline" className="text-primary border-primary hover:bg-primary/5 flex-shrink-0">
+                                <Button
+                                  size="sm"
+                                  variant={savedProfiles.has(candidate.public_id) ? "default" : "outline"}
+                                  className="text-primary border-primary hover:bg-primary/5 flex-shrink-0"
+                                  onClick={() => handleToggleSave(candidate.public_id)}
+                                >
                                   <Bookmark className="w-4 h-4 mr-1" />
-                                  Save
+                                  {savedProfiles.has(candidate.public_id) ? "Saved" : "Save"}
                                 </Button>
                               </div>
                               ));

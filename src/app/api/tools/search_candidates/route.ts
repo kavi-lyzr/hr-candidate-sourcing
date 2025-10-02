@@ -144,9 +144,27 @@ export async function POST(request: Request) {
             const profile = searchResults.data[i];
             console.log(`[${i + 1}/${searchResults.data.length}] Processing profile: ${profile.full_name || 'Unknown'}`);
             
-            // Skip profiles without public_id
+            // Attempt to derive a unique ID if public_id is missing
             if (!profile.public_id) {
-                console.warn(`  ⚠️  Skipping: No public_id for ${profile.full_name || 'Unknown'}`);
+                if (profile.linkedin_url) {
+                    // Regex to extract public_id from a LinkedIn URL
+                    const match = profile.linkedin_url.match(/linkedin\.com\/in\/([^/?]+)/);
+                    if (match && match[1]) {
+                        profile.public_id = match[1];
+                        console.log(`  ℹ️  Derived public_id from linkedin_url: ${profile.public_id}`);
+                    }
+                }
+            }
+            
+            // Fallback to profile_id
+            if (!profile.public_id && profile.profile_id) {
+                profile.public_id = profile.profile_id;
+                console.log(`  ℹ️  Using profile_id as fallback public_id: ${profile.public_id}`);
+            }
+
+            // Skip profiles without a usable unique ID
+            if (!profile.public_id) {
+                console.warn(`  ⚠️  Skipping: No usable unique ID for ${profile.full_name || 'Unknown'}`);
                 skippedCount++;
                 continue;
             }
