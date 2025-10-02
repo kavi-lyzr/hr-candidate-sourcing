@@ -6,6 +6,7 @@ import connectDB from '@/lib/db';
 import CandidateProfile from '@/models/candidateProfile';
 import User from '@/models/user';
 import SearchSession from '@/models/searchSession';
+import { pubsub } from '@/lib/pubsub';
 
 export const maxDuration = 180; // Set timeout to 3 minutes for this API route
 const MAX_LIMIT = 50;
@@ -229,6 +230,13 @@ export async function POST(request: Request) {
                 };
                 await session.save();
                 console.log(`✅ Stored ${allProfiles.length} profiles in database for session: ${session_id}`);
+
+                // Publish event for the SSE stream to pick up
+                pubsub.publish(session_id, {
+                    type: 'candidate_profiles',
+                    data: allProfiles,
+                });
+                console.log(`🚀 Published tool-result event for session: ${session_id}`);
             } else {
                 console.warn(`⚠️  Session ${session_id} not found in database. Results will still be returned to agent.`);
             }
@@ -247,7 +255,6 @@ export async function POST(request: Request) {
             total_updated: updatedCount,
             total_skipped: skippedCount,
             data: formattedProfiles, // Concise data for agent
-            all_profiles: allProfiles, // Full data for frontend display
         }, { headers: corsHeaders });
 
     } catch (error: any) {
