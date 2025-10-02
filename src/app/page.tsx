@@ -655,10 +655,14 @@ export default function Home() {
 
                                 <div className="flex items-center space-x-1">
                                   {message.candidates && Array.from({ length: Math.min(5, Math.ceil(message.candidates.length / profilesPerPage)) }, (_, i) => {
+                                    const totalPages = Math.ceil((message.candidates?.length || 0) / profilesPerPage);
                                     const pageNumber = Math.max(1, Math.min(
                                       currentPage - 2 + i,
-                                      Math.ceil(message.candidates.length / profilesPerPage)
+                                      totalPages
                                     ));
+                                    
+                                    if (pageNumber > totalPages) return null;
+
                                     return (
                                       <Button
                                         key={pageNumber}
