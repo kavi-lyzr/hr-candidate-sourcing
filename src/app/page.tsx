@@ -24,7 +24,7 @@ interface Message {
     education?: string;
     summary: string;
     companyLogo?: string;
-    profilePic?: string;
+    // profilePic?: string; // Removed - LinkedIn API returns empty strings
     linkedinUrl?: string;
     public_id: string;
   }>;
@@ -58,7 +58,7 @@ export default function Home() {
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
-  const profilesPerPage = 10;
+  const profilesPerPage = 5;
 
   // Helper function to render message content with clickable candidate names
   const renderMessageContent = (content: string) => {
@@ -191,9 +191,9 @@ export default function Home() {
           education: profile.education?.[0]?.school || '',
           summary: profile.about || 'No summary available',
           companyLogo: profile.company_logo_url || '',
-          profilePic: profile.profile_image_url
-            ? `${profile.profile_image_url}?w=100&h=100&fit=crop&crop=face`
-            : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
+          // profilePic: profile.profile_image_url
+          //   ? `${profile.profile_image_url}?w=100&h=100&fit=crop&crop=face`
+          //   : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
           linkedinUrl: profile.linkedin_url || `https://www.linkedin.com/in/${profile.public_id}`,
           public_id: profile.public_id,
         }));
@@ -210,9 +210,9 @@ export default function Home() {
           const dbCandidates = await candidatesResponse.json();
           candidates = dbCandidates.map((candidate: any) => ({
             ...candidate,
-            profilePic: candidate.profile_image_url
-              ? `${candidate.profile_image_url}?w=100&h=100&fit=crop&crop=face`
-              : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
+            // profilePic: candidate.profile_image_url
+            //   ? `${candidate.profile_image_url}?w=100&h=100&fit=crop&crop=face`
+            //   : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
             linkedinUrl: candidate.linkedin_url || `https://www.linkedin.com/in/${candidate.public_id}`,
           }));
           console.log('[Chat] Fetched', candidates.length, 'candidate details from database');
@@ -539,18 +539,8 @@ export default function Home() {
                         {message.candidates.slice(0, 3).map((candidate) => (
                             <div key={candidate.id} className="border rounded-lg p-4 bg-card/50 hover:bg-card transition-colors">
                             <div className="flex items-start space-x-3">
-                              <Image
-                                src={candidate.profilePic || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"}
-                                alt={candidate.name}
-                                width={48}
-                                height={48}
-                                className="rounded-full object-cover flex-shrink-0"
-                                onError={(e) => {
-                                  const target = e.target as HTMLImageElement;
-                                  target.src = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face";
-                                }}
-                              />
-                  <div className="flex-1">
+                              {/* Profile picture removed - LinkedIn API returns empty strings */}
+                              <div className="flex-1">
                                 <div className="flex items-center space-x-2 mb-1">
                                   <a 
                                     href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
@@ -700,17 +690,7 @@ export default function Home() {
 
                               return paginatedCandidates.map((candidate) => (
                               <div key={candidate.id} className="flex items-center space-x-3 p-3 border rounded-lg bg-card hover:bg-card/80 transition-colors">
-                                <Image
-                                  src={candidate.profilePic || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"}
-                                  alt={candidate.name}
-                                  width={40}
-                                  height={40}
-                                  className="rounded-full object-cover flex-shrink-0"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face";
-                                  }}
-                                />
+                                {/* Profile picture removed - LinkedIn API returns empty strings */}
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center space-x-2 mb-1">
                                     <a 
