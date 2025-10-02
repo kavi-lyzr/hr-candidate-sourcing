@@ -1,6 +1,6 @@
-export const LATEST_SOURCING_AGENT_VERSION = '1.2.0';
-export const LATEST_MATCHING_AGENT_VERSION = '1.2.0';
-export const LATEST_PROFILE_SUMMARY_AGENT_VERSION = '1.0.2';
+export const LATEST_SOURCING_AGENT_VERSION = '1.2.1';
+export const LATEST_MATCHING_AGENT_VERSION = '1.2.1';
+export const LATEST_PROFILE_SUMMARY_AGENT_VERSION = '1.2.1';
 export const LATEST_TOOL_VERSION = '1.0.3';
 
 export const SOURCING_AGENT_CONFIG = {
@@ -38,7 +38,7 @@ export const SOURCING_AGENT_CONFIG = {
             priority: 0
         }
     ],
-    model: 'gemini/gemini-2.0-flash-exp',
+    model: 'gemini/gemini-2.5-flash',
     provider_id: 'Google',
     llm_credential_id: 'lyzr_google',
     temperature: 0.5,
@@ -77,7 +77,7 @@ export const MATCHING_AGENT_CONFIG = {
             priority: 0
         }
     ],
-    model: 'gemini/gemini-2.0-flash-exp',
+    model: 'gemini/gemini-2.5-flash',
     provider_id: 'Google',
     llm_credential_id: 'lyzr_google',
     temperature: 0.5,
