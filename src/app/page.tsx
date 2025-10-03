@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { ChevronDown, School, MapPin, Settings, Bookmark, Sparkles, History, RefreshCw, User, Bot, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronDown, School, MapPin, Settings, Bookmark, Sparkles, History, RefreshCw, User, Bot, ChevronLeft, ChevronRight, Send, CheckCircle, Target, MapPin as MapPinIcon, Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { FilterDialog } from "@/components/filter-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/AuthProvider";
@@ -114,9 +115,20 @@ export default function Home() {
     const query = queryOverride || searchQuery;
     if (!query.trim()) return;
 
+    // Enhance query with JD content if JD is selected
+    let enhancedQuery = query.trim();
+    if (selectedJD) {
+      const selectedJDData = availableJDs.find(jd => jd.name === selectedJD);
+      if (selectedJDData) {
+        // For now, we'll just add the JD title to the query
+        // In a real implementation, you'd fetch the full JD content
+        enhancedQuery = `Job Description: ${selectedJD}\n\nSearch Query: ${query.trim()}`;
+      }
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: query.trim(),
+      content: query.trim(), // Show original query to user
       role: 'user',
       timestamp: new Date(),
     };
@@ -126,7 +138,7 @@ export default function Home() {
     setShowChat(true);
 
     try {
-      console.log('[Chat] Sending message:', query);
+      console.log('[Chat] Sending message:', enhancedQuery);
       
       // Check if user is authenticated
       if (!isAuthenticated || !userId || !email) {
@@ -141,7 +153,7 @@ export default function Home() {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
         },
         body: JSON.stringify({
-          query: query.trim(),
+          query: enhancedQuery, // Send enhanced query to API
           jdId: selectedJD || null,
           user: {
             id: userId,
@@ -234,6 +246,14 @@ export default function Home() {
       setMessages(prev => [...prev, aiResponse]);
       setIsLoading(false);
       
+      // Scroll to bottom after adding message
+      setTimeout(() => {
+        const messagesContainer = document.querySelector('.overflow-y-auto');
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      }, 100);
+      
       // Reload conversation history
       loadConversationHistory();
 
@@ -249,6 +269,14 @@ export default function Home() {
       };
       setMessages(prev => [...prev, errorMessage]);
       setIsLoading(false);
+      
+      // Scroll to bottom after adding error message
+      setTimeout(() => {
+        const messagesContainer = document.querySelector('.overflow-y-auto');
+        if (messagesContainer) {
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      }, 100);
     }
 
     setSearchQuery("");
@@ -514,82 +542,82 @@ export default function Home() {
   if (showChat) {
     return (
       <div className="min-h-screen bg-background animate-fade-in">
+        {/* Fixed Header with Controls */}
+        <div className="fixed top-20 right-4 z-30 flex items-center gap-2">
+          {/* History dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 bg-background/90 backdrop-blur-sm shadow-lg">
+                <History className="h-4 w-4" />
+                History
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64 max-h-64 overflow-y-auto">
+              {conversationHistory.length > 0 ? (
+                <>
+                  {conversationHistory.map((conversation) => (
+                    <DropdownMenuItem
+                      key={conversation.sessionId}
+                      className="flex items-center justify-between gap-2 p-3 cursor-pointer"
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <div 
+                        className="flex-1 flex flex-col items-start gap-1"
+                        onClick={() => loadConversation(conversation.sessionId)}
+                      >
+                        <div className="font-medium text-sm truncate w-full">
+                          {conversation.title}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(conversation.lastUpdated).toLocaleDateString()} • {conversation.messageCount} messages
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteConversation(conversation.sessionId);
+                        }}
+                      >
+                        ×
+                      </Button>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={resetConversation}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    New Conversation
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <DropdownMenuItem disabled className="text-center text-muted-foreground">
+                  No conversations yet
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Reset button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={resetConversation}
+            className="gap-2 bg-background/90 backdrop-blur-sm shadow-lg"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Reset
+          </Button>
+        </div>
+
         {/* Chat Interface */}
         <div className="flex flex-col h-screen">
-          {/* Fixed Header with Controls */}
-          <div className="fixed top-32 right-4 z-30 flex items-center gap-2">
-            {/* History dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 bg-background/90 backdrop-blur-sm shadow-lg">
-                  <History className="h-4 w-4" />
-                  History
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64 max-h-64 overflow-y-auto">
-                {conversationHistory.length > 0 ? (
-                  <>
-                    {conversationHistory.map((conversation) => (
-                      <DropdownMenuItem
-                        key={conversation.sessionId}
-                        className="flex items-center justify-between gap-2 p-3 cursor-pointer"
-                        onSelect={(e) => e.preventDefault()}
-                      >
-                        <div 
-                          className="flex-1 flex flex-col items-start gap-1"
-                          onClick={() => loadConversation(conversation.sessionId)}
-                        >
-                          <div className="font-medium text-sm truncate w-full">
-                            {conversation.title}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {new Date(conversation.lastUpdated).toLocaleDateString()} • {conversation.messageCount} messages
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteConversation(conversation.sessionId);
-                          }}
-                        >
-                          ×
-                        </Button>
-                      </DropdownMenuItem>
-                    ))}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={resetConversation}
-                      className="gap-2 cursor-pointer"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      New Conversation
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  <DropdownMenuItem disabled className="text-center text-muted-foreground">
-                    No conversations yet
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Reset button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={resetConversation}
-              className="gap-2 bg-background/90 backdrop-blur-sm shadow-lg"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Reset
-            </Button>
-          </div>
-
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto pt-4 pb-32">
+          <div className="flex-1 overflow-y-auto pt-32 pb-32">
             <div className="max-w-4xl mx-auto px-4 space-y-6">
               {messages.map((message) => (
                 <div
@@ -855,17 +883,17 @@ export default function Home() {
           </div>
 
           {/* Fixed Input Area at Bottom */}
-          <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t">
-            <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="fixed bottom-0 left-64 right-0 bg-background/80 backdrop-blur-sm border-t">
+            <div className="max-w-2xl mx-auto px-4 py-4">
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   {selectedJD && (
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20">
-                        @{selectedJD}
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20 max-w-32">
+                        <span className="truncate">@{selectedJD}</span>
                         <button
                           onClick={() => setSelectedJD("")}
-                          className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
+                          className="ml-1 hover:bg-primary/20 rounded-full p-0.5 flex-shrink-0"
                         >
                           ×
                         </button>
@@ -875,7 +903,7 @@ export default function Home() {
                   <Input
                     placeholder="Ask a follow-up question..."
                     disabled={isLoading}
-                    className={`h-12 text-base ${selectedJD ? 'pl-28' : 'pl-4'} pr-4 border-2 border-border focus:border-primary rounded-lg ${isLoading ? 'opacity-50' : ''}`}
+                    className={`h-12 text-base ${selectedJD ? 'pl-36' : 'pl-4'} pr-12 border-2 border-border focus:border-primary rounded-lg ${isLoading ? 'opacity-50' : ''}`}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -897,9 +925,9 @@ export default function Home() {
                     }
                   }}
                   disabled={isLoading}
-                  className="h-12 px-6"
+                  className="h-12 w-12 p-0"
                 >
-                  Send
+                  <Send className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -917,9 +945,82 @@ export default function Home() {
   }
   
   return (
-    <div className="min-h-screen bg-background flex flex-col animate-fade-in">
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-start px-4 pt-8 pb-4 animate-fade-in-up">
+    <div className="min-h-[calc(100vh-100px)] bg-background animate-fade-in flex flex-col">
+      {/* Fixed Header with Controls */}
+      <div className="fixed top-20 right-4 z-30 flex items-center gap-2">
+        {/* History dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2 bg-background/90 backdrop-blur-sm shadow-lg">
+              <History className="h-4 w-4" />
+              History
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64 max-h-64 overflow-y-auto">
+            {conversationHistory.length > 0 ? (
+              <>
+                {conversationHistory.map((conversation) => (
+                  <DropdownMenuItem
+                    key={conversation.sessionId}
+                    className="flex items-center justify-between gap-2 p-3 cursor-pointer"
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <div 
+                      className="flex-1 flex flex-col items-start gap-1"
+                      onClick={() => loadConversation(conversation.sessionId)}
+                    >
+                      <div className="font-medium text-sm truncate w-full">
+                        {conversation.title}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(conversation.lastUpdated).toLocaleDateString()} • {conversation.messageCount} messages
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteConversation(conversation.sessionId);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={resetConversation}
+                  className="gap-2 cursor-pointer"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  New Conversation
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <DropdownMenuItem disabled className="text-center text-muted-foreground">
+                No conversations yet
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Reset button - disabled on main screen */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={resetConversation}
+          disabled={!showChat}
+          className="gap-2 bg-background/90 backdrop-blur-sm shadow-lg disabled:opacity-50"
+        >
+          <RefreshCw className="h-4 w-4" />
+          Reset
+        </Button>
+      </div>
+
+      {/* Main Content - accounting for sidebar */}
+      <div className="flex flex-col items-center justify-center h-full px-4 py-8 animate-fade-in-up grow">
         {/* Header Section */}
         <div className="text-center mb-6 animate-fade-in-up">
           <div className="flex items-center justify-center mb-4">
@@ -952,22 +1053,31 @@ export default function Home() {
             <div className="relative">
               {selectedJD && (
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20">
-                    @{selectedJD}
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20 max-w-48">
+                    <span className="truncate">@{selectedJD}</span>
                     <button
                       onClick={() => setSelectedJD("")}
-                      className="ml-1 hover:bg-primary/20 rounded-full p-0.5"
+                      className="ml-1 hover:bg-primary/20 rounded-full p-0.5 flex-shrink-0"
                     >
                       ×
                     </button>
                   </span>
                 </div>
               )}
-            <Input
+            <Textarea
               placeholder={searchQuery.trim() ? "" : (isClient ? placeholderText : "Search for candidates...")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-                className={`h-14 text-base ${selectedJD ? 'pl-32' : 'pl-4'} pr-24 border-2 border-border focus:border-primary rounded-lg shadow-sm`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (searchQuery.trim()) {
+                    handleSearch();
+                  }
+                }
+              }}
+              className={`min-h-14 max-h-32 text-base ${selectedJD ? 'pl-52' : 'pl-4'} pr-24 border-2 border-border focus:border-primary rounded-lg shadow-sm resize-none`}
+              rows={1}
             />
             </div>
             <div className="absolute right-2 top-2">
@@ -1037,6 +1147,34 @@ export default function Home() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Typing Hints - invisible positioning to prevent layout shift */}
+          <div className={`mt-4 transition-all duration-300 ${!selectedJD && searchQuery.trim() ? 'opacity-100 h-auto' : 'opacity-0 overflow-hidden'}`}>
+            <div className="p-4 bg-muted/50 rounded-lg border">
+              <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                For best results include
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs border border-primary/20">
+                  <Target className="h-3 w-3" />
+                  Job title or role
+                </div>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs border border-primary/20">
+                  <MapPinIcon className="h-3 w-3" />
+                  Location
+                </div>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs border border-primary/20">
+                  <Clock className="h-3 w-3" />
+                  Experience level
+                </div>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-xs border border-primary/20">
+                  <CheckCircle className="h-3 w-3" />
+                  Specific skills
+                </div>
+              </div>
             </div>
           </div>
 
