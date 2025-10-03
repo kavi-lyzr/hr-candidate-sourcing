@@ -28,7 +28,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Find all saved profiles for the user
-    const savedProfiles = await SavedProfile.find({ user: user._id }).populate('candidate');
+    const savedProfiles = await SavedProfile.find({ user: user._id }).populate({
+      path: 'candidate',
+      model: 'CandidateProfile'
+    });
     
     // Extract the publicId from the populated candidate document
     const savedCandidatePublicIds = savedProfiles

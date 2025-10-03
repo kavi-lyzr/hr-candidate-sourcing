@@ -242,6 +242,18 @@ export async function POST(request: Request) {
         try {
             const session = await SearchSession.findById(session_id);
             if (session) {
+                // SECURITY: Verify session belongs to the authenticated user
+                const user = await User.findById(userId);
+                if (!user || !session.user.equals(user._id)) {
+                    console.error(`❌ SECURITY VIOLATION: Session ${session_id} does not belong to user ${userId}`);
+                    return NextResponse.json({ 
+                        error: 'Unauthorized access to session' 
+                    }, { 
+                        status: 403,
+                        headers: corsHeaders 
+                    });
+                }
+
                 session.toolResults = {
                     allProfiles,
                     timestamp: new Date(),

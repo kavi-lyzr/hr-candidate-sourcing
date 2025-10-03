@@ -1,7 +1,7 @@
-export const LATEST_SOURCING_AGENT_VERSION = '1.3.0';
-export const LATEST_MATCHING_AGENT_VERSION = '1.2.1';
+export const LATEST_SOURCING_AGENT_VERSION = '1.4.0';
+export const LATEST_MATCHING_AGENT_VERSION = '1.4.1';
 export const LATEST_PROFILE_SUMMARY_AGENT_VERSION = '1.2.1';
-export const LATEST_TOOL_VERSION = '1.1.0';
+export const LATEST_TOOL_VERSION = '1.4.0';
 
 export const SOURCING_AGENT_CONFIG = {
     agentType: 'sourcing',
@@ -13,7 +13,7 @@ export const SOURCING_AGENT_CONFIG = {
 **Workflow:**
 1. Analyze the user's request, which could be a simple query or a query combined with a Job Description.
 2. Extract key criteria like job titles, skills, company names, and locations from the user's input.
-3. Use the \`search_candidates\` tool to find profiles matching these criteria.
+3. Use the \`search_candidates\` tool to find profiles matching these criteria, once you have sufficient information. If the tool reeturns 0 profiles, try calling the tool again with more simple parameters.
 4. After the tool returns a list of candidate profiles with summaries, review them carefully.
 5. Present the most promising candidates to the user in a concise, helpful summary. For each candidate you mention, you MUST format their name as a Markdown link, using their full name as the text and their \`public_id\` as the URL. Example: \`[Elizabeth Waller](elizabeth-waller-11b53121)\`.
 
@@ -52,7 +52,7 @@ The tool accepts these parameters:
 
 **CRITICAL CONTEXT:**
 - Available locations with their IDs: {{ available_locations }}
-- If a location is not on the list, use the closest available location or politely inform the user.
+- If a location is not on the list, use the closest available location or politely inform the user. Support for more locations is coming soon.
 - Current date and time is: {{ datetime }}.
 - The user's name is: {{ user_name }}.`,
     agent_goal: "To relentlessly analyze user requirements and leverage the search tool until a satisfactory list of high-quality candidate profiles is found and presented to the user, ensuring the sourcing task is completed.",
@@ -71,9 +71,9 @@ The tool accepts these parameters:
             priority: 0
         }
     ],
-    model: 'gemini/gemini-2.5-flash',
-    provider_id: 'Google',
-    llm_credential_id: 'lyzr_google',
+    model: 'gpt-4.1',
+    provider_id: 'OpenAI',
+    llm_credential_id: 'lyzr_openai',
     temperature: 0.5,
     top_p: 0.9,
 };
@@ -81,26 +81,35 @@ The tool accepts these parameters:
 export const MATCHING_AGENT_CONFIG = {
     agentType: 'matching',
     name: "Candidate Matching Agent",
-    description: "An analytical AI agent that evaluates a list of saved candidate profiles against a specific Job Description to rank them and provide a rationale for each match.",
+    description: "An analytical AI agent that evaluates candidate profiles against a Job Description and returns structured ranking data.",
     agent_role: "You are an Expert Hiring Manager. Your specialty is in meticulously evaluating candidate profiles against the specific requirements of a Job Description to identify the best fits.",
-    agent_instructions: `You are an expert AI Hiring Manager working for {{ user_name }}. Your task is to analyze and rank a set of candidates for a specific job role. You must continue this task until a complete, ranked list is generated. NEVER create artifacts.
+    agent_instructions: `You are an expert AI Hiring Manager working for {{ user_name }}. Your task is to analyze and rank a set of candidates for a specific job role based on the provided job description and candidate profiles.
 
-**Workflow:**
-1. You will be provided with the full text of a Job Description and a list of candidate profiles.
-2. Your SOLE task is to use the \`rank_candidates\` tool, passing the job description and all candidate profiles to it.
-3. The tool will return a ranked list.
-4. Present this ranked list to the user in a clear, easy-to-read format, starting with the top-ranked candidate. For each candidate, clearly state their name, rank/score, and the summary provided by the tool.
+**Context:**
+- Job Description: {{ job_description }}
+- Candidate Profiles: {{ candidate_profiles }}
+- Current date and time: {{ datetime }}
+- User name: {{ user_name }}
 
-**CRITICAL CONTEXT:**
-- Current date and time is: {{ datetime }}.
-- The user's name is: {{ user_name }}.`,
-    agent_goal: "To meticulously analyze all provided candidates against the job description and use the ranking tool to produce a complete, justified, and ranked list, ensuring the evaluation task is fully completed.",
-    tools: [], // Will be populated dynamically with only rank_candidates tool
-    tool_usage_description: `{
-  "{{TOOL_RANK_CANDIDATES}}": [
-    "Use this tool when you need to rank or match candidates against a job description. Always pass the complete job description and all candidate profiles to this tool. Call this tool as soon as you receive both the job description and candidate profiles"
-  ]
-}`,
+**Your Task:**
+1. Analyze each candidate profile against the job description requirements
+2. Rank all candidates from best fit to least fit
+3. For each candidate, provide a summary explaining why they would be a good fit or any relevant experience
+4. Return the results in the specified JSON format
+
+**Ranking Criteria:**
+- Experience relevance and years
+- Skills alignment with job requirements
+- Education background
+- Company experience (current/past)
+- Overall profile strength
+- Cultural fit indicators
+
+You must ALWAYS return output in structured output, in the response_format that is defined. Do not create any artifacts. Do not reply in text or ask for any clarifcations.
+`,
+    agent_goal: "To meticulously analyze all provided candidates against the job description and produce a complete, justified, and ranked list with detailed explanations.",
+    tools: [], // No tools needed - uses structured output
+    tool_usage_description: "No tools required - this agent uses structured output to return ranking results.",
     features: [
         {
             type: "MEMORY",
@@ -110,11 +119,96 @@ export const MATCHING_AGENT_CONFIG = {
             priority: 0
         }
     ],
-    model: 'gemini/gemini-2.5-flash',
-    provider_id: 'Google',
-    llm_credential_id: 'lyzr_google',
-    temperature: 0.5,
+    model: 'gpt-4.1',
+    provider_id: 'OpenAI',
+    llm_credential_id: 'lyzr_openai',
+    temperature: 0.3,
     top_p: 0.9,
+    response_format: {
+        type: "json_schema",
+        json_schema: {
+            name: "candidate_ranking",
+            strict: false,
+            schema: {
+                type: "object",
+                properties: {
+                    ranked_candidates: {
+                        type: "array",
+                        description: "Array of candidates ranked from best fit to least fit",
+                        items: {
+                            type: "object",
+                            properties: {
+                                rank: {
+                                    type: "integer",
+                                    description: "Ranking position (1 = best fit, 2 = second best, etc.)"
+                                },
+                                candidate_id: {
+                                    type: "string",
+                                    description: "MongoDB ObjectId of the candidate profile"
+                                },
+                                // public_id: {
+                                //     type: "string",
+                                //     description: "Public ID of the candidate (e.g., elizabeth-waller-11b53121)"
+                                // },
+                                // full_name: {
+                                //     type: "string",
+                                //     description: "Full name of the candidate"
+                                // },
+                                match_score: {
+                                    type: "number",
+                                    description: "Match score from 0-100 (100 = perfect match)"
+                                },
+                                summary: {
+                                    type: "string",
+                                    description: "Detailed explanation of why this candidate is a good fit, highlighting relevant experience and qualifications"
+                                },
+                                key_strengths: {
+                                    type: "array",
+                                    items: { type: "string" },
+                                    description: "Array of key strengths that make this candidate suitable for the role",
+                                    minItems: 0
+                                },
+                                potential_concerns: {
+                                    type: "array",
+                                    items: { type: "string" },
+                                    description: "Array of potential concerns or gaps in the candidate's profile",
+                                    minItems: 0
+                                }
+                            },
+                            required: ["rank", "candidate_id", "match_score", "summary"],
+                            additionalProperties: false
+                        }
+                    },
+                    // overall_analysis: {
+                    //     type: "object",
+                    //     properties: {
+                    //         total_candidates: {
+                    //             type: "integer",
+                    //             description: "Total number of candidates analyzed"
+                    //         },
+                    //         top_tier_count: {
+                    //             type: "integer",
+                    //             description: "Number of candidates in top tier (score 80+)"
+                    //         },
+                    //         general_observations: {
+                    //             type: "string",
+                    //             description: "General observations about the candidate pool and their fit for the role"
+                    //         },
+                    //         recommended_next_steps: {
+                    //             type: "array",
+                    //             items: { type: "string" },
+                    //             description: "Recommended next steps for the hiring process"
+                    //         }
+                    //     },
+                    //     required: ["total_candidates", "top_tier_count", "general_observations", "recommended_next_steps"],
+                    //     additionalProperties: false
+                    // }
+                },
+                required: ["ranked_candidates"],
+                additionalProperties: false
+            }
+        }
+    },
 };
 
 export const PROFILE_SUMMARY_AGENT_CONFIG = {
@@ -141,7 +235,7 @@ export const PROFILE_SUMMARY_AGENT_CONFIG = {
     "ALWAYS use this tool to submit your profile summaries. Create a JSON object with public_id as keys and summary strings as values. Call this tool immediately after analyzing all profiles"
   ]
 }`,
-    model: 'gpt-4o-mini',
+    model: 'gpt-4.1',
     provider_id: 'OpenAI',
     llm_credential_id: 'lyzr_openai',
     temperature: 0.3,
@@ -228,49 +322,49 @@ export const tools = {
                 }
             }
         },
-        "/api/tools/rank_candidates": {
-            "post": {
-                "summary": "Rank candidates against a Job Description",
-                "description": "Takes a job description and a list of candidate profiles, then returns a ranked list with scores and justifications.",
-                "operationId": "rank_candidates",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "required": [
-                                    "job_description",
-                                    "candidate_profiles"
-                                ],
-                                "properties": {
-                                    "job_description": {
-                                        "type": "string",
-                                        "description": "The full text content of the Job Description."
-                                    },
-                                    "candidate_profiles": {
-                                        "type": "array",
-                                        "description": "An array of candidate profile objects.",
-                                        "items": { "type": "object" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successfully ranked the candidates."
-                    },
-                    "400": {
-                        "description": "Bad request due to missing required fields."
-                    },
-                    "500": {
-                        "description": "Internal server error during ranking."
-                    }
-                }
-            }
-        },
+        // "/api/tools/rank_candidates": {
+        //     "post": {
+        //         "summary": "Rank candidates against a Job Description",
+        //         "description": "Takes a job description and a list of candidate profiles, then returns a ranked list with scores and justifications.",
+        //         "operationId": "rank_candidates",
+        //         "requestBody": {
+        //             "required": true,
+        //             "content": {
+        //                 "application/json": {
+        //                     "schema": {
+        //                         "type": "object",
+        //                         "required": [
+        //                             "job_description",
+        //                             "candidate_profiles"
+        //                         ],
+        //                         "properties": {
+        //                             "job_description": {
+        //                                 "type": "string",
+        //                                 "description": "The full text content of the Job Description."
+        //                             },
+        //                             "candidate_profiles": {
+        //                                 "type": "array",
+        //                                 "description": "An array of candidate profile objects.",
+        //                                 "items": { "type": "object" }
+        //                             }
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         },
+        //         "responses": {
+        //             "200": {
+        //                 "description": "Successfully ranked the candidates."
+        //             },
+        //             "400": {
+        //                 "description": "Bad request due to missing required fields."
+        //             },
+        //             "500": {
+        //                 "description": "Internal server error during ranking."
+        //             }
+        //         }
+        //     }
+        // },
         "/api/tools/generate_profile_summaries": {
             "post": {
                 "summary": "Generate summaries for candidate profiles",
