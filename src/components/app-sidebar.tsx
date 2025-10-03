@@ -10,6 +10,7 @@ import {
   IconSearch,
   IconSettings,
   IconUsersGroup,
+  IconCalendar,
 } from "@tabler/icons-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -55,15 +56,15 @@ const data = {
     },
   ],
   navSecondary: [
+    // {
+    //   title: "Settings",
+    //   url: "#",
+    //   icon: IconSettings,
+    // },
     {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: IconHelp,
+      title: "Book Demo",
+      url: "https://www.lyzr.ai/book-demo/",
+      icon: IconCalendar,
     },
   ],
 }
