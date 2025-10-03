@@ -541,7 +541,13 @@ export default function Home() {
 
   if (showChat) {
     return (
-      <div className="min-h-screen bg-background animate-fade-in">
+      <div className="min-h-screen bg-background animate-fade-in relative overflow-hidden">
+        {/* Subtle Grid Background - almost invisible in chat mode */}
+        <div className="absolute inset-0 pointer-events-none opacity-5">
+          <div className="absolute inset-0 bg-grid-pattern animate-grid-flow"></div>
+          {/* Radial fade overlay to reduce opacity at center */}
+          <div className="absolute inset-0 bg-radial-fade"></div>
+        </div>
         {/* Fixed Header with Controls */}
         <div className="fixed top-20 right-4 z-30 flex items-center gap-2">
           {/* History dropdown */}
@@ -615,7 +621,7 @@ export default function Home() {
         </div>
 
         {/* Chat Interface */}
-        <div className="flex flex-col h-screen">
+        <div className="relative z-10 flex flex-col h-screen">
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto pt-32 pb-32">
             <div className="max-w-4xl mx-auto px-4 space-y-6">
@@ -945,7 +951,13 @@ export default function Home() {
   }
   
   return (
-    <div className="min-h-[calc(100vh-100px)] bg-background animate-fade-in flex flex-col">
+    <div className="min-h-[calc(100vh-100px)] bg-background animate-fade-in flex flex-col relative overflow-hidden">
+      {/* Subtle Animated Grid Background */}
+      <div className={`absolute inset-0 pointer-events-none transition-opacity duration-1000 ${showChat ? 'opacity-5' : 'opacity-75'}`}>
+        <div className="absolute inset-0 bg-grid-pattern animate-grid-flow"></div>
+        {/* Radial fade overlay to reduce opacity at center */}
+        <div className="absolute inset-0 bg-radial-fade"></div>
+      </div>
       {/* Fixed Header with Controls */}
       <div className="fixed top-20 right-4 z-30 flex items-center gap-2">
         {/* History dropdown */}
@@ -1020,7 +1032,7 @@ export default function Home() {
       </div>
 
       {/* Main Content - accounting for sidebar */}
-      <div className="flex flex-col items-center justify-center h-full px-4 py-8 animate-fade-in-up grow">
+      <div className="relative z-10 flex flex-col items-center justify-center h-full px-4 py-8 animate-fade-in-up grow">
         {/* Header Section */}
         <div className="text-center mb-6 animate-fade-in-up">
           <div className="flex items-center justify-center mb-4">
@@ -1059,7 +1071,7 @@ export default function Home() {
                       onClick={() => setSelectedJD("")}
                       className="ml-1 hover:bg-primary/20 rounded-full p-0.5 flex-shrink-0"
                     >
-                      ×
+                      <X className="h-4 w-4" />
                     </button>
                   </span>
                 </div>
@@ -1076,7 +1088,7 @@ export default function Home() {
                   }
                 }
               }}
-              className={`min-h-14 max-h-32 text-base ${selectedJD ? 'pl-52' : 'pl-4'} pr-24 border-2 border-border focus:border-primary rounded-lg shadow-sm resize-none`}
+              className={`min-h-14 max-h-32 text-base ${selectedJD ? 'pl-52' : 'pl-4'} pr-24 border-2 border-border focus:border-primary rounded-lg shadow-sm resize-none bg-background/80 backdrop-blur-2xl`}
               rows={1}
             />
             </div>

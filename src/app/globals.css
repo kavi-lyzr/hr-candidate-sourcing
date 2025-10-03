@@ -207,6 +207,24 @@ body {
   }
 }
 
+@keyframes grid-flow {
+  0% {
+    transform: translateX(0) translateY(0);
+  }
+  25% {
+    transform: translateX(10px) translateY(-5px);
+  }
+  50% {
+    transform: translateX(0) translateY(-10px);
+  }
+  75% {
+    transform: translateX(-5px) translateY(-5px);
+  }
+  100% {
+    transform: translateX(0) translateY(0);
+  }
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -250,6 +268,45 @@ body {
 
 .animate-bounce-gentle {
   animation: bounce-gentle 2s ease-in-out infinite;
+}
+
+.animate-grid-flow {
+  animation: grid-flow 20s ease-in-out infinite;
+}
+
+/* Subtle Grid Pattern */
+.bg-grid-pattern {
+  background-image: 
+    linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.dark .bg-grid-pattern {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+/* Radial fade overlay to reduce grid opacity at center */
+.bg-radial-fade {
+  background: radial-gradient(
+    circle at center,
+    transparent 0%,
+    transparent 30%,
+    rgba(255, 255, 255, 0.1) 60%,
+    rgba(255, 255, 255, 0.3) 100%
+  );
+}
+
+.dark .bg-radial-fade {
+  background: radial-gradient(
+    circle at center,
+    transparent 0%,
+    transparent 30%,
+    rgba(0, 0, 0, 0.1) 60%,
+    rgba(0, 0, 0, 0.3) 100%
+  );
 }
 
 /* Gradient background effects for AI Assistant */
