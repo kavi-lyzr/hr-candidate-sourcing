@@ -93,7 +93,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     alt="Lyzr" 
                     width={64}
                     height={40}
-                    className="h-10 w-auto object-contain"
+                    className="h-10 w-auto object-contain dark:invert transition-all duration-300"
                   />
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">

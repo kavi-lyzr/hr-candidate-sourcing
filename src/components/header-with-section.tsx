@@ -21,7 +21,7 @@ export function HeaderWithSection() {
     <div className="flex h-14 items-center gap-3 border-b px-4 sticky top-0 z-10 bg-background">
       <SidebarTrigger />
       <div className="h-4 w-px bg-gray-300" />
-      <h1 className="text-sm font-medium text-gray-900">{sectionName}</h1>
+      <h1 className="text-sm font-medium text-foreground">{sectionName}</h1>
       <div className="ml-auto flex items-center gap-2">
         <NotificationBell />
         <ThemeSwitcher />

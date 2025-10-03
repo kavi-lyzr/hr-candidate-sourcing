@@ -89,8 +89,8 @@ export function CreateJdDialog({ onJdCreated, children }: CreateJdDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[425px] min-h-fit h-[50%] flex flex-col">
+        <DialogHeader className="h-16 max-h-16">
           <DialogTitle>Create New Job Description</DialogTitle>
           <DialogDescription>Add a new JD by entering the details manually or uploading a file.</DialogDescription>
         </DialogHeader>
