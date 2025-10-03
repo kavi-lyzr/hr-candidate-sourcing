@@ -929,7 +929,7 @@ export default function Home() {
                 alt="Lyzr Logo" 
                 width={80}
                 height={48}
-                className="h-12 w-auto object-contain"
+                className="h-12 w-auto object-contain dark:invert"
               />
             </div>
           </div>

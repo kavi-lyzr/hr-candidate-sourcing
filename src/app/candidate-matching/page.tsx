@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { IconSparkles, IconMapPin, IconBuilding, IconBookmark, IconUpload, IconUsersGroup, IconLoader2, IconSearch } from "@tabler/icons-react";
+import { IconSparkles, IconMapPin, IconBuilding, IconBookmark, IconUpload, IconUsersGroup, IconLoader2, IconSearch, IconDotsVertical, IconExternalLink } from "@tabler/icons-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/AuthProvider";
 import { toast } from "sonner";
 
@@ -234,21 +235,20 @@ export default function CandidateMatching() {
   const selectedCandidatesCount = candidateDatabase.filter(c => c.selected).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Section Header */}
-      <div className="bg-white border-b px-6 py-4">
-        <h1 className="text-xl font-semibold text-gray-900">Candidate Matching</h1>
-        <p className="text-sm text-gray-600 mt-1">Match candidates with job descriptions using AI-powered ranking</p>
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Candidate Matching</h1>
+          <p className="text-muted-foreground">Match candidates with job descriptions using AI-powered ranking</p>
+        </div>
       </div>
       
-      <div className="flex-1 flex">
+      <div className="flex gap-6 h-[calc(100vh-230px)] md:overflow-y-clip">
         {/* Left Section */}
-      <div className="w-1/2 p-6 border-r border-gray-200">
-        <div className="h-full flex flex-col space-y-6">
-          
+        <div className="w-1/2 flex flex-col space-y-6">
           {/* Select JD Dropdown */}
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Select Job Description</h2>
+            <h2 className="text-lg font-semibold mb-3">Select Job Description</h2>
             <Select value={selectedJD} onValueChange={(value) => {
               setSelectedJD(value);
             }}>
@@ -275,9 +275,9 @@ export default function CandidateMatching() {
           </div>
 
           {/* Candidate Database */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-900">Candidate Database</h2>
+              <h2 className="text-lg font-semibold">Candidate Database</h2>
               <div className="flex space-x-2">
                 <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
                   <DialogTrigger asChild>
@@ -293,26 +293,35 @@ export default function CandidateMatching() {
                       </DialogDescription>
                     </DialogHeader>
                     <div className="grid gap-4 py-4">
-                      <Button variant="outline" className="justify-start h-12">
+                      <Button variant="outline" className="justify-start h-12 opacity-50 cursor-not-allowed" disabled>
                         <IconUsersGroup className="w-4 h-4 mr-3" />
                         Integrate with Workday
+                        <Badge variant="secondary" className="ml-auto text-xs">Contact Us</Badge>
                       </Button>
-                      <Button variant="outline" className="justify-start h-12">
+                      <Button variant="outline" className="justify-start h-12 opacity-50 cursor-not-allowed" disabled>
                         <IconUsersGroup className="w-4 h-4 mr-3" />
                         Integrate with SAP SuccessFactors
+                        <Badge variant="secondary" className="ml-auto text-xs">Contact Us</Badge>
                       </Button>
-                      <Button variant="outline" className="justify-start h-12">
+                      <Button variant="outline" className="justify-start h-12 opacity-50 cursor-not-allowed" disabled>
                         <IconUsersGroup className="w-4 h-4 mr-3" />
                         Integrate with Keka
+                        <Badge variant="secondary" className="ml-auto text-xs">Contact Us</Badge>
                       </Button>
-                      <Button variant="outline" className="justify-start h-12">
+                      <Button variant="outline" className="justify-start h-12 opacity-50 cursor-not-allowed" disabled>
                         <IconUpload className="w-4 h-4 mr-3" />
                         Bulk Upload Resumes
+                        <Badge variant="secondary" className="ml-auto text-xs">Schedule Demo</Badge>
                       </Button>
+                    </div>
+                    <div className="text-center py-2">
+                      <p className="text-sm text-muted-foreground">
+                        Contact us for these additional features or schedule a demo
+                      </p>
                     </div>
                     <DialogFooter>
                       <Button type="submit" onClick={() => setImportDialogOpen(false)}>
-                        Cancel
+                        Close
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -323,7 +332,7 @@ export default function CandidateMatching() {
             {/* Search Bar */}
             <div className="mb-3">
               <div className="relative">
-                <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <IconSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
                   type="text"
                   placeholder="Search candidates by name, company, title..."
@@ -334,27 +343,47 @@ export default function CandidateMatching() {
               </div>
             </div>
             
-            <div className="bg-white rounded-lg border border-gray-200 flex-1 overflow-y-auto">
+            <div className="bg-card rounded-lg border flex-1 overflow-y-auto">
               <div className="p-4">
                 <div className="space-y-3">
                   {filteredCandidates.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <IconSearch className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                    <div className="text-center py-8 text-muted-foreground">
+                      <IconSearch className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
                       <p className="text-sm">
                         {searchQuery ? 'No candidates found matching your search' : 'No candidates available'}
                       </p>
                     </div>
                   ) : (
                     filteredCandidates.map((candidate) => (
-                    <div key={candidate.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 border border-gray-100">
+                    <div 
+                      key={candidate.id} 
+                      className={`flex items-start space-x-3 p-3 rounded-lg border cursor-pointer transition-all duration-200 ${
+                        candidate.selected 
+                          ? 'bg-primary/10 border-primary/20 hover:bg-primary/15' 
+                          : 'hover:bg-muted/50 border-border'
+                      }`}
+                      onClick={() => handleCandidateSelection(candidate.id)}
+                    >
                       <Checkbox 
                         checked={candidate.selected}
-                        onCheckedChange={() => handleCandidateSelection(candidate.id)}
-                        className="mt-1"
+                        className="mt-1 pointer-events-none"
                       />
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 text-sm">{candidate.name}</h4>
-                        <p className="text-xs text-gray-600 truncate">{candidate.title}</p>
+                        <div className="flex items-center space-x-2">
+                          <h4 className="font-medium text-foreground text-sm">{candidate.name}</h4>
+                          {candidate.public_id && (
+                            <a 
+                              href={`https://www.linkedin.com/in/${candidate.public_id}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-primary hover:text-primary/80 transition-colors"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <IconExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">{candidate.title}</p>
                         <div className="flex items-center space-x-1 mt-1">
                           {candidate.companyLogo ? (
                             <Image 
@@ -369,8 +398,8 @@ export default function CandidateMatching() {
                               }}
                             />
                           ) : null}
-                          <IconBuilding className={`w-3 h-3 text-gray-400 ${candidate.companyLogo ? 'hidden' : ''}`} />
-                          <span className="text-xs text-gray-500">{candidate.company}</span>
+                          <IconBuilding className={`w-3 h-3 text-muted-foreground ${candidate.companyLogo ? 'hidden' : ''}`} />
+                          <span className="text-xs text-muted-foreground">{candidate.company}</span>
                         </div>
                       </div>
                     </div>
@@ -380,10 +409,10 @@ export default function CandidateMatching() {
               </div>
             </div>
             
-            <div className="mt-4 text-sm text-gray-600">
+            <div className="mt-4 text-sm text-muted-foreground">
               {selectedCandidatesCount} of {filteredCandidates.length} candidates selected
               {searchQuery && (
-                <span className="text-gray-400 ml-2">
+                <span className="text-muted-foreground/60 ml-2">
                   (showing {filteredCandidates.length} of {candidateDatabase.length} total)
                 </span>
               )}
@@ -391,11 +420,11 @@ export default function CandidateMatching() {
           </div>
 
           {/* Match Candidates Button */}
-          <div>
+          <div className="mt-auto">
             <Button 
               onClick={handleMatchCandidates}
               disabled={!selectedJD || selectedCandidatesCount === 0 || isMatching}
-              className="w-full h-12 bg-gradient-to-r from-[#603BFC] to-[#A94FA1] hover:from-[#5235E8] hover:to-[#9A45A0] text-white"
+              className="w-full h-12"
             >
               {isMatching ? (
                 <>
@@ -411,13 +440,11 @@ export default function CandidateMatching() {
             </Button>
           </div>
         </div>
-      </div>
 
-      {/* Right Section */}
-      <div className="w-1/2 p-6">
-        <div className="h-full flex flex-col">
+        {/* Right Section */}
+        <div className="w-1/2 flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">
+            <h2 className="text-lg font-semibold">
               {showResults ? "Ranked Candidates" : "Candidate Ranking"}
             </h2>
             {showResults && (
@@ -425,11 +452,11 @@ export default function CandidateMatching() {
             )}
           </div>
           
-          <div className="bg-white rounded-lg border border-gray-200 flex-1 overflow-y-auto">
+          <div className="bg-card rounded-lg border flex-1 overflow-y-auto">
             {isMatching ? (
               <div className="flex items-center justify-center h-full">
-                <div className="text-center text-gray-500">
-                  <IconLoader2 className="w-12 h-12 mx-auto mb-4 text-[#603BFC] animate-spin" />
+                <div className="text-center text-muted-foreground">
+                  <IconLoader2 className="w-12 h-12 mx-auto mb-4 text-primary animate-spin" />
                   <p className="text-lg font-medium mb-2">Matching Candidates</p>
                   <p className="text-sm">
                     AI is analyzing and ranking your candidates...
@@ -438,27 +465,43 @@ export default function CandidateMatching() {
               </div>
             ) : showResults ? (
               <div className="p-4 space-y-4">
-                {rankedCandidates.map((rankedCandidate) => {
+                {rankedCandidates.map((rankedCandidate, index) => {
                   const candidate = rankedCandidate.candidate_data;
                   if (!candidate) return null;
                   
                   return (
-                    <div key={rankedCandidate.candidate_id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div 
+                      key={rankedCandidate.candidate_id} 
+                      className="border rounded-lg p-4 hover:shadow-md transition-all duration-200 animate-fade-in-up"
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
                       <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3 mb-2">
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-3 mb-2 flex-wrap">
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
                               #{rankedCandidate.rank}
                             </Badge>
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
                               {rankedCandidate.match_score}% match
                             </Badge>
-                            <h3 className="font-semibold text-blue-600 hover:text-blue-700 cursor-pointer">
-                              {candidate.name}
-                            </h3>
+                            <div className="flex items-center space-x-2">
+                              <h3 className="font-semibold text-primary hover:text-primary/80 cursor-pointer">
+                                {candidate.name}
+                              </h3>
+                              {candidate.public_id && (
+                                <a 
+                                  href={`https://www.linkedin.com/in/${candidate.public_id}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:text-primary/80 transition-colors"
+                                >
+                                  <IconExternalLink className="w-4 h-4" />
+                                </a>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-sm text-gray-600 mb-2">{candidate.title}</p>
-                          <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
+                          <p className="text-sm text-muted-foreground mb-2">{candidate.title}</p>
+                          <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-3 flex-wrap">
                             <div className="flex items-center space-x-1">
                               {candidate.companyLogo ? (
                                 <Image 
@@ -473,7 +516,7 @@ export default function CandidateMatching() {
                                   }}
                                 />
                               ) : null}
-                              <IconBuilding className={`w-4 h-4 fallback-icon ${candidate.companyLogo ? 'hidden' : ''}`} />
+                              <IconBuilding className={`w-4 h-4 ${candidate.companyLogo ? 'hidden' : ''}`} />
                               <span>{candidate.company}</span>
                             </div>
                             <div className="flex items-center space-x-1">
@@ -482,7 +525,7 @@ export default function CandidateMatching() {
                             </div>
                             {candidate.years_of_experience && (
                               <div className="flex items-center space-x-1">
-                                <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                                <span className="text-xs bg-muted px-2 py-1 rounded">
                                   {candidate.years_of_experience} years exp
                                 </span>
                               </div>
@@ -493,11 +536,11 @@ export default function CandidateMatching() {
                           <div className="mt-3">
                             <div className="flex items-start space-x-2">
                               <div className="flex items-center mt-0.5">
-                                <IconSparkles className="h-4 w-4 text-[#603BFC]" />
+                                <IconSparkles className="h-4 w-4 text-primary" />
                               </div>
                               <div className="relative flex-1">
-                                <div className="absolute inset-0 bg-gradient-to-r from-purple-50 to-transparent rounded-sm opacity-60"></div>
-                                <p className="text-sm text-gray-700 italic relative z-10 px-2 py-1">
+                                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent rounded-sm opacity-60"></div>
+                                <p className="text-sm text-foreground relative z-10 px-2 py-1">
                                   {rankedCandidate.summary}
                                 </p>
                               </div>
@@ -507,10 +550,10 @@ export default function CandidateMatching() {
                           {/* Key Strengths */}
                           {rankedCandidate.key_strengths && rankedCandidate.key_strengths.length > 0 && (
                             <div className="mt-3">
-                              <h4 className="text-xs font-medium text-gray-600 mb-1">Key Strengths:</h4>
+                              <h4 className="text-xs font-medium text-muted-foreground mb-1">Key Strengths:</h4>
                               <div className="flex flex-wrap gap-1">
                                 {rankedCandidate.key_strengths.map((strength, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                  <Badge key={idx} variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
                                     {strength}
                                   </Badge>
                                 ))}
@@ -521,10 +564,10 @@ export default function CandidateMatching() {
                           {/* Potential Concerns */}
                           {rankedCandidate.potential_concerns && rankedCandidate.potential_concerns.length > 0 && (
                             <div className="mt-2">
-                              <h4 className="text-xs font-medium text-gray-600 mb-1">Areas to Consider:</h4>
+                              <h4 className="text-xs font-medium text-muted-foreground mb-1">Areas to Consider:</h4>
                               <div className="flex flex-wrap gap-1">
                                 {rankedCandidate.potential_concerns.map((concern, idx) => (
-                                  <Badge key={idx} variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200">
+                                  <Badge key={idx} variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-300 dark:border-yellow-800">
                                     {concern}
                                   </Badge>
                                 ))}
@@ -532,11 +575,20 @@ export default function CandidateMatching() {
                             </div>
                           )}
                         </div>
-                        <div>
-                          <Button size="sm" variant="outline" className="text-[#603BFC] border-[#603BFC] hover:bg-purple-50">
-                            <IconBookmark className="w-4 h-4 mr-1" />
-                            Save
-                          </Button>
+                        <div className="ml-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline" className="h-8 w-8 p-0">
+                                <IconDotsVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem>
+                                <IconBookmark className="w-4 h-4 mr-2" />
+                                Remove from List
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     </div>
@@ -545,8 +597,8 @@ export default function CandidateMatching() {
               </div>
             ) : (
               <div className="flex items-center justify-center h-full">
-                <div className="text-center text-gray-500">
-                  <IconUsersGroup className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <div className="text-center text-muted-foreground">
+                  <IconUsersGroup className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
                   <p className="text-lg font-medium mb-2">Ready to Match Candidates</p>
                   <p className="text-sm">
                     Select a JD and choose candidates to see ranked matches
@@ -556,7 +608,6 @@ export default function CandidateMatching() {
             )}
           </div>
         </div>
-      </div>
       </div>
     </div>
   );

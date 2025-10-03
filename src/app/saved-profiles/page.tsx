@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
-import { ChevronDown, ChevronRight, Calendar, Building, Link as LinkIcon, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Calendar, Building, Link as LinkIcon, Trash2, Search, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/AuthProvider";
 import { toast } from "sonner";
 
@@ -75,49 +75,76 @@ export default function SavedProfiles() {
 
   if (isLoading) {
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
-            <div className="bg-white border-b px-6 py-4">
-                <h1 className="text-xl font-semibold text-gray-900">Saved Profiles</h1>
-                <p className="text-sm text-gray-600 mt-1">Manage your saved candidate profiles and search history</p>
-            </div>
-            <div className="flex-1 p-6 text-center">
-                <p>Loading your saved profiles...</p>
-            </div>
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">Saved Profiles</h1>
+            <p className="text-muted-foreground">Manage your saved candidate profiles and search history</p>
+          </div>
         </div>
+        
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Search History & Saved Profiles</h2>
+          {[...Array(3)].map((_, i) => (
+            <Card key={i} className="overflow-hidden">
+              <CardHeader className="pb-3">
+                <div className="flex items-center space-x-3">
+                  <Skeleton className="h-6 w-6 rounded" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <div className="flex items-center space-x-4">
+                      <Skeleton className="h-3 w-20" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
+      </div>
     )
   }
 
   if (searchHistory.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <div className="bg-white border-b px-6 py-4">
-            <h1 className="text-xl font-semibold text-gray-900">Saved Profiles</h1>
-            <p className="text-sm text-gray-600 mt-1">Manage your saved candidate profiles and search history</p>
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold">Saved Profiles</h1>
+            <p className="text-muted-foreground">Manage your saved candidate profiles and search history</p>
+          </div>
         </div>
-        <div className="flex-1 p-6 text-center">
+        
+        <Card>
+          <CardContent className="text-center py-12">
+            <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium">No Saved Profiles Found</h3>
-            <p className="text-gray-500 mt-2">Start a new search and save candidates to see them here.</p>
-            <Button className="mt-4" onClick={() => window.location.href = '/'}>
-                Start Searching
+            <p className="text-muted-foreground mb-4">Start a new search and save candidates to see them here.</p>
+            <Button onClick={() => window.location.href = '/'}>
+              <Search className="w-4 h-4 mr-2" />
+              Start Searching
             </Button>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Section Header */}
-      <div className="bg-white border-b px-6 py-4">
-        <h1 className="text-xl font-semibold text-gray-900">Saved Profiles</h1>
-        <p className="text-sm text-gray-600 mt-1">Manage your saved candidate profiles and search history</p>
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Saved Profiles</h1>
+          <p className="text-muted-foreground">Manage your saved candidate profiles and search history</p>
+        </div>
       </div>
       
-      <div className="flex-1 p-6">
-        <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Search History */}
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Search History & Saved Profiles</h2>
+          <h2 className="text-lg font-semibold">Search History & Saved Profiles</h2>
           
           {searchHistory.map((search) => (
             <Card key={search.sessionId} className="overflow-hidden">
@@ -129,20 +156,20 @@ export default function SavedProfiles() {
                         variant="ghost"
                         size="sm"
                         onClick={() => toggleSearchExpansion(search.sessionId)}
-                        className="p-1 h-6 w-6"
+                        className="p-1 h-6 w-6 hover:bg-accent transition-colors"
                       >
-                        {expandedSearch === search.sessionId ? (
-                          <ChevronDown className="w-4 h-4" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4" />
-                        )}
+                        <ChevronDown 
+                          className={`w-4 h-4 transition-transform duration-200 ${
+                            expandedSearch === search.sessionId ? 'rotate-0' : '-rotate-90'
+                          }`} 
+                        />
                       </Button>
                       <div className="flex-1">
-                        <h3 className="font-medium text-gray-900 text-sm leading-5">
+                        <h3 className="font-medium text-foreground text-sm leading-5">
                           {search.query}
                         </h3>
                         <div className="flex items-center space-x-4 mt-1">
-                          <p className="text-xs text-gray-500">{new Date(search.date).toLocaleDateString()}</p>
+                          <p className="text-xs text-muted-foreground">{new Date(search.date).toLocaleDateString()}</p>
                           {search.resultsCount && (
                             <Badge variant="outline" className="text-xs">
                                 {search.resultsCount} results
@@ -159,38 +186,50 @@ export default function SavedProfiles() {
               </CardHeader>
 
               {expandedSearch === search.sessionId && search.savedProfiles.length > 0 && (
-                <CardContent className="pt-0">
+                <CardContent className="pt-0 animate-fade-in">
                   <div className="border-t pt-4">
-                    <h4 className="text-sm font-medium text-gray-900 mb-3">Saved Profiles ({search.savedProfiles.length})</h4>
+                    <h4 className="text-sm font-medium text-foreground mb-3">Saved Profiles ({search.savedProfiles.length})</h4>
                     <div className="space-y-3">
-                      {search.savedProfiles.map((profile) => (
-                        <div key={profile._id} className="bg-gray-50 rounded-lg p-4">
+                      {search.savedProfiles.map((profile, index) => (
+                        <div 
+                          key={profile._id} 
+                          className="bg-muted/50 rounded-lg p-4 hover:bg-muted/70 transition-colors duration-200 animate-fade-in-up"
+                          style={{ animationDelay: `${index * 50}ms` }}
+                        >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <div className="flex items-center space-x-3 mb-2">
-                                <h5 className="font-medium text-primary hover:text-primary/80 cursor-pointer" onClick={() => window.open(`https://www.linkedin.com/in/${profile.candidate.publicId}`, '_blank')}>
+                                <h5 
+                                  className="font-medium text-primary hover:text-primary/80 cursor-pointer transition-colors" 
+                                  onClick={() => window.open(`https://www.linkedin.com/in/${profile.candidate.publicId}`, '_blank')}
+                                >
                                   {profile.candidate.fullName}
                                 </h5>
-                                <a href={`https://www.linkedin.com/in/${profile.candidate.publicId}`} target="_blank" rel="noopener noreferrer" className="w-5 h-5 hover:opacity-80 transition-opacity">
-                                  <LinkIcon className="w-4 h-4 text-gray-500" />
+                                <a 
+                                  href={`https://www.linkedin.com/in/${profile.candidate.publicId}`} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="w-5 h-5 hover:opacity-80 transition-opacity"
+                                >
+                                  <LinkIcon className="w-4 h-4 text-muted-foreground" />
                                 </a>
                               </div>
                               <div className="space-y-1">
                                 <div className="flex items-center space-x-2">
-                                  <Building className="w-4 h-4 text-gray-400" />
-                                  <p className="text-sm text-gray-900">{profile.candidate.jobTitle} at {profile.candidate.company}</p>
+                                  <Building className="w-4 h-4 text-muted-foreground" />
+                                  <p className="text-sm text-foreground">{profile.candidate.jobTitle} at {profile.candidate.company}</p>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                  <Calendar className="w-4 h-4 text-gray-400" />
-                                  <p className="text-xs text-gray-500">Saved on {new Date(profile.savedAt).toLocaleDateString()}</p>
+                                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                                  <p className="text-xs text-muted-foreground">Saved on {new Date(profile.savedAt).toLocaleDateString()}</p>
                                 </div>
                               </div>
-                              <p className="text-sm text-gray-600 italic mt-2">{profile.candidate.summary}</p>
+                              <p className="text-sm text-muted-foreground italic mt-2">{profile.candidate.summary}</p>
                             </div>
                             <Button
                               size="sm"
                               variant="outline"
-                              className="text-red-600 border-red-200 hover:bg-red-50"
+                              className="text-destructive border-destructive/20 hover:bg-destructive/10 hover:border-destructive/30 transition-colors"
                               disabled // Remove functionality is not implemented in this pass
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
@@ -205,9 +244,9 @@ export default function SavedProfiles() {
               )}
 
               {expandedSearch === search.sessionId && search.savedProfiles.length === 0 && (
-                <CardContent className="pt-0">
+                <CardContent className="pt-0 animate-fade-in">
                   <div className="border-t pt-4">
-                    <p className="text-sm text-gray-500 text-center py-4">
+                    <p className="text-sm text-muted-foreground text-center py-4">
                       No profiles saved from this search yet. This can happen if they were unsaved.
                     </p>
                   </div>
@@ -216,7 +255,6 @@ export default function SavedProfiles() {
             </Card>
           ))}
         </div>
-      </div>
       </div>
     </div>
   );
