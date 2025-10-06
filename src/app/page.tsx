@@ -64,7 +64,8 @@ export default function Home() {
 
   // Helper function to render message content with clickable candidate names
   const renderMessageContent = (content: string) => {
-    // Parse markdown links: [Name](public_id)
+    // Parse markdown links: [Name](url)
+    // The URL can be a full URL (LinkedIn or Google search) or just a public_id
     const parts = [];
     let lastIndex = 0;
     const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
@@ -78,13 +79,17 @@ export default function Home() {
       
       // Add the clickable link
       const name = match[1];
-      const publicId = match[2];
-      const linkedinUrl = `https://www.linkedin.com/in/${publicId}`;
+      const urlOrId = match[2];
+      
+      // Determine if it's a full URL or just an ID
+      const finalUrl = urlOrId.startsWith('http') 
+        ? urlOrId 
+        : `https://www.linkedin.com/in/${urlOrId}`;
       
       parts.push(
         <a
           key={match.index}
-          href={linkedinUrl}
+          href={finalUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="text-primary hover:underline font-medium"

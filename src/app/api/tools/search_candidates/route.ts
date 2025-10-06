@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { decrypt } from '@/lib/lyzr-services';
-import { performLinkedInSearch, formatProfileForLLM, calculateYearsOfExperience, type LinkedInSearchParams } from '@/lib/linkedin-api';
+import { performLinkedInSearch, formatProfileForLLM, calculateYearsOfExperience, deriveProfileId, generateProfileUrl, type LinkedInSearchParams } from '@/lib/linkedin-api';
 import { availableLocations } from '@/lib/locations';
 import connectDB from '@/lib/db';
 import CandidateProfile from '@/models/candidateProfile';
@@ -9,7 +9,7 @@ import SearchSession from '@/models/searchSession';
 import { pubsub } from '@/lib/pubsub';
 
 export const maxDuration = 180; // Set timeout to 3 minutes for this API route
-const MAX_LIMIT = 50;
+const MAX_LIMIT = 30;
 
 // Allow CORS for tool calls from Lyzr Studio
 export async function OPTIONS(request: Request) {
@@ -125,120 +125,112 @@ export async function POST(request: Request) {
             }, { headers: corsHeaders });
         }
 
+        // Log LinkedIn API response
         console.log(`LinkedIn search completed. Found ${searchResults.data.length} candidates out of ${searchResults.total_count || 0} total available.`);
+        
+        // Warn if LinkedIn API returned more profiles than requested (API not respecting limit)
+        if (searchResults.data.length > maxLimit) {
+            console.warn(`⚠️  LinkedIn API returned ${searchResults.data.length} profiles but limit was ${maxLimit}. Truncating results.`);
+            searchResults.data = searchResults.data.slice(0, maxLimit);
+        }
 
-        // 7. Connect to DB and store profiles
-        console.log('Connecting to database...');
-        await connectDB();
-        console.log('Database connected successfully');
-
+        // 7. Process profiles first (synchronous, fast)
+        console.log(`Processing ${searchResults.data.length} profiles...`);
+        
         const formattedProfiles = [];
         const allProfiles = []; // Store all profiles for frontend communication
-        let storedCount = 0;
-        let updatedCount = 0;
+        const profilesForDB = []; // Collect profiles for batch DB operation
         let skippedCount = 0;
-        
-        console.log(`Processing ${searchResults.data.length} profiles for storage...`);
         
         for (let i = 0; i < searchResults.data.length; i++) {
             const profile = searchResults.data[i];
-            console.log(`[${i + 1}/${searchResults.data.length}] Processing profile: ${profile.full_name || 'Unknown'}`);
             
-            // Attempt to derive a unique ID if public_id is missing
-            if (!profile.public_id) {
-                if (profile.linkedin_url) {
-                    // Regex to extract public_id from a LinkedIn URL
-                    const match = profile.linkedin_url.match(/linkedin\.com\/in\/([^/?]+)/);
-                    if (match && match[1]) {
-                        profile.public_id = match[1];
-                        console.log(`  ℹ️  Derived public_id from linkedin_url: ${profile.public_id}`);
-                    }
-                }
-            }
+            // Derive unique ID using centralized function
+            const uniqueId = deriveProfileId(profile);
             
-            // Fallback to profile_id
-            if (!profile.public_id && profile.profile_id) {
-                profile.public_id = profile.profile_id;
-                console.log(`  ℹ️  Using profile_id as fallback public_id: ${profile.public_id}`);
-            }
-
             // Skip profiles without a usable unique ID
-            if (!profile.public_id) {
-                console.warn(`  ⚠️  Skipping: No usable unique ID for ${profile.full_name || 'Unknown'}`);
+            if (!uniqueId) {
+                console.warn(`⚠️  [${i + 1}/${searchResults.data.length}] Skipping: No ID for ${profile.full_name || 'Unknown'}`);
                 skippedCount++;
                 continue;
             }
+            
+            // Update profile with derived ID for consistency
+            profile.public_id = uniqueId;
 
-            try {
-                // Check if profile exists, if not create it
-                let candidateProfile = await CandidateProfile.findOne({ publicId: profile.public_id });
-                
-                if (!candidateProfile) {
-                    candidateProfile = new CandidateProfile({
-                        publicId: profile.public_id,
-                        rawData: profile,
-                        lastFetchedAt: new Date(),
-                    });
-                    await candidateProfile.save();
-                    console.log(`  ✅ Stored NEW profile: ${profile.full_name} (${profile.public_id})`);
-                    storedCount++;
-                } else {
-                    // Update existing profile
-                    candidateProfile.rawData = profile;
-                    candidateProfile.lastFetchedAt = new Date();
-                    await candidateProfile.save();
-                    console.log(`  ♻️  Updated EXISTING profile: ${profile.full_name} (${profile.public_id})`);
-                    updatedCount++;
-                }
-            } catch (saveError: any) {
-                console.error(`  ❌ FAILED to save profile ${profile.full_name}:`, {
-                    error: saveError.message,
-                    code: saveError.code,
-                    name: saveError.name
-                });
-                skippedCount++;
-                // Continue with next profile
-                continue;
-            }
-
-            // Format for LLM (concise version for agent)
+            // Format for LLM (optimized, concise version for agent)
             const formatted = formatProfileForLLM(profile);
             formattedProfiles.push(formatted);
 
+            // Collect for batch DB operation
+            profilesForDB.push({
+                publicId: uniqueId,
+                rawData: profile,
+            });
+
             // Store full profile data for frontend communication
             allProfiles.push({
-                public_id: profile.public_id,
+                public_id: uniqueId,
                 full_name: profile.full_name,
-                job_title: profile.job_title,
-                company: profile.company,
-                location: profile.location,
-                linkedin_url: profile.linkedin_url,
-                profile_image_url: profile.profile_image_url,
-                company_logo_url: profile.company_logo_url,
-                headline: profile.headline,
-                about: profile.about?.substring(0, 200) || '',
+                job_title: profile.job_title || '',
+                company: profile.company || '',
+                location: profile.location || '',
+                profile_url: generateProfileUrl(profile, uniqueId), // Intelligent URL with fallback
+                linkedin_url: generateProfileUrl(profile, uniqueId), // Keep for backwards compatibility
+                profile_image_url: profile.profile_image_url || '',
+                company_logo_url: profile.company_logo_url || '',
+                headline: profile.headline || '',
+                about: profile.about || '',
                 years_of_experience: calculateYearsOfExperience(profile),
                 education: profile.educations?.slice(0, 1).map(edu => ({
-                    degree: edu.degree,
-                    field: edu.field_of_study,
-                    school: edu.school,
-                })) || [],
+                    degree: edu.degree || '',
+                    field: edu.field_of_study || '',
+                    school: edu.school || '',
+                })).filter(edu => edu.school) || [],
             });
         }
 
-        console.log(`\n📊 Profile processing complete:`);
-        console.log(`   - New profiles stored: ${storedCount}`);
-        console.log(`   - Existing profiles updated: ${updatedCount}`);
-        console.log(`   - Profiles skipped: ${skippedCount}`);
-        console.log(`   - Total processed: ${formattedProfiles.length}\n`);
+        console.log(`✅ Processed ${formattedProfiles.length} valid profiles, skipped ${skippedCount}`);
 
-        // 8. Generate AI summaries for profiles
-        // Connect to user to get their profile summary agent (if we implement this feature)
-        // For now, we'll return profiles with basic info and let the sourcing agent handle summarization
+        // 8. Connect to database (needed for both candidate storage and session operations)
+        console.log('🔄 Connecting to database...');
+        await connectDB();
 
-        console.log(`Successfully processed ${formattedProfiles.length} candidates`);
+        // 9. Save candidate profiles to database using bulkWrite for efficiency
+        // We need to await this to ensure profiles are stored before continuing
+        let storedCount = 0;
+        let updatedCount = 0;
+        
+        try {
+            if (profilesForDB.length > 0) {
+                console.log(`💾 Saving ${profilesForDB.length} profiles to database...`);
+                
+                // Use bulkWrite for better performance
+                const bulkOps = profilesForDB.map(profileData => ({
+                    updateOne: {
+                        filter: { publicId: profileData.publicId },
+                        update: {
+                            $set: {
+                                rawData: profileData.rawData,
+                                lastFetchedAt: new Date(),
+                            },
+                        },
+                        upsert: true,
+                    },
+                }));
+                
+                const result = await CandidateProfile.bulkWrite(bulkOps);
+                storedCount = result.upsertedCount || 0;
+                updatedCount = result.modifiedCount || 0;
+                console.log(`✅ Database save complete: ${storedCount} new, ${updatedCount} updated`);
+            }
+        } catch (dbError: any) {
+            console.error('❌ Failed to save profiles to database:', dbError.message);
+            // Continue anyway - profiles can be saved later if needed
+        }
 
-        // 8. Store results in database for retrieval by chat endpoint
+        // 10. Store results in session for retrieval by chat endpoint
+        // This is critical for the non-streaming implementation to work
         try {
             const session = await SearchSession.findById(session_id);
             if (session) {
@@ -254,28 +246,31 @@ export async function POST(request: Request) {
                     });
                 }
 
+                // Store all profiles in session for frontend retrieval
                 session.toolResults = {
                     allProfiles,
                     timestamp: new Date(),
                 };
                 await session.save();
-                console.log(`✅ Stored ${allProfiles.length} profiles in database for session: ${session_id}`);
+                console.log(`✅ Stored ${allProfiles.length} profiles in session: ${session_id}`);
 
-                // Publish event for the SSE stream to pick up
+                // Note: SSE pubsub is not currently used by the frontend
+                // The non-streaming implementation reads from session.toolResults instead
+                // Keeping this for backwards compatibility or future use
                 pubsub.publish(session_id, {
                     type: 'candidate_profiles',
                     data: allProfiles,
                 });
-                console.log(`🚀 Published tool-result event for session: ${session_id}`);
             } else {
                 console.warn(`⚠️  Session ${session_id} not found in database. Results will still be returned to agent.`);
             }
         } catch (dbError: any) {
-            console.error('❌ Failed to store results in database:', dbError.message);
+            console.error('❌ Failed to store results in session:', dbError.message);
             // Don't fail the tool call, just log the error
         }
 
-        // 9. Return formatted profiles for agent + all profiles for frontend
+        // 11. Return formatted profiles for agent (concise, optimized)
+        // The agent uses this data, the frontend gets allProfiles from session
         return NextResponse.json({ 
             success: true, 
             message: `Found ${formattedProfiles.length} candidates matching your criteria.`,
@@ -284,7 +279,7 @@ export async function POST(request: Request) {
             total_stored: storedCount,
             total_updated: updatedCount,
             total_skipped: skippedCount,
-            data: formattedProfiles, // Concise data for agent
+            data: formattedProfiles, // Optimized, concise data for LLM
         }, { headers: corsHeaders });
 
     } catch (error: any) {

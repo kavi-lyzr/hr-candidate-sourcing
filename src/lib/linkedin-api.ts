@@ -247,32 +247,152 @@ export function calculateYearsOfExperience(profile: LinkedInProfile): number {
 }
 
 /**
- * Format profile for LLM consumption (concise version)
+ * Derive a unique identifier from profile
+ * Priority: public_id > profile_id > linkedin_url extraction > fallback hash
+ */
+export function deriveProfileId(profile: LinkedInProfile): string {
+    // 1. Try public_id
+    if (profile.public_id) return profile.public_id;
+    
+    // 2. Try profile_id
+    if (profile.profile_id) return profile.profile_id;
+    
+    // 3. Try extracting from linkedin_url
+    if (profile.linkedin_url) {
+        const match = profile.linkedin_url.match(/linkedin\.com\/in\/([^/?]+)/);
+        if (match && match[1]) return match[1];
+    }
+    
+    // 4. Fallback: generate a stable hash from name and company
+    // This ensures we always have an ID, even if LinkedIn data is incomplete
+    const nameSlug = (profile.full_name || 'unknown')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    
+    const companySlug = (profile.company || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    
+    // Create a unique identifier combining name and company
+    return companySlug ? `${nameSlug}-at-${companySlug}` : nameSlug;
+}
+
+/**
+ * Generate a profile URL with intelligent fallback
+ * Priority: linkedin_url > constructed linkedin > google search
+ */
+export function generateProfileUrl(profile: LinkedInProfile, uniqueId: string): string {
+    // 1. Try direct LinkedIn URL
+    if (profile.linkedin_url) {
+        return profile.linkedin_url;
+    }
+    
+    // 2. Try constructing LinkedIn URL from uniqueId (if it looks like a LinkedIn slug)
+    // LinkedIn slugs typically don't contain 'at' or excessive hyphens
+    if (uniqueId && !uniqueId.includes('-at-') && uniqueId.split('-').length <= 4) {
+        return `https://www.linkedin.com/in/${uniqueId}`;
+    }
+    
+    // 3. Fallback to Google search URL
+    const searchTerms = [];
+    
+    if (profile.full_name) searchTerms.push(profile.full_name);
+    if (profile.job_title) searchTerms.push(profile.job_title);
+    if (profile.company) searchTerms.push(profile.company);
+    if (profile.location) searchTerms.push(profile.location);
+    searchTerms.push('LinkedIn'); // Always include LinkedIn in search
+    
+    const query = encodeURIComponent(searchTerms.join(' '));
+    return `https://www.google.com/search?q=${query}`;
+}
+
+/**
+ * Remove empty, null, or undefined fields from an object
+ */
+function removeEmptyFields(obj: any): any {
+    if (Array.isArray(obj)) {
+        const filtered = obj.map(removeEmptyFields).filter(item => {
+            if (typeof item === 'object' && item !== null) {
+                return Object.keys(item).length > 0;
+            }
+            return item !== null && item !== undefined && item !== '';
+        });
+        return filtered.length > 0 ? filtered : undefined;
+    }
+    
+    if (typeof obj === 'object' && obj !== null) {
+        const cleaned: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+            if (value === null || value === undefined || value === '') continue;
+            
+            const cleanedValue = removeEmptyFields(value);
+            if (cleanedValue !== undefined) {
+                cleaned[key] = cleanedValue;
+            }
+        }
+        return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+    }
+    
+    return obj;
+}
+
+/**
+ * Format profile for LLM consumption (optimized, concise version)
+ * Only includes non-empty fields to reduce token usage
  */
 export function formatProfileForLLM(profile: LinkedInProfile): any {
+    const uniqueId = deriveProfileId(profile);
     const yearsOfExperience = calculateYearsOfExperience(profile);
 
-    return {
-        public_id: profile.public_id,
-        full_name: profile.full_name,
-        headline: profile.headline,
-        current_title: profile.job_title,
-        current_company: profile.company,
-        location: profile.location,
-        years_of_experience: yearsOfExperience,
-        education: profile.educations?.slice(0, 2).map(edu => ({
-            degree: edu.degree,
-            field: edu.field_of_study,
-            school: edu.school,
-        })) || [],
-        recent_experience: profile.experiences?.slice(0, 3).map(exp => ({
-            title: exp.title,
-            company: exp.company,
-            duration: exp.duration,
-            is_current: exp.is_current,
-        })) || [],
-        linkedin_url: profile.linkedin_url,
-        about: profile.about?.substring(0, 300) || '', // Truncate to avoid token limits
+    // Build base object with only essential fields
+    const formatted: any = {
+        public_id: uniqueId, // Always include ID for reference (agent expects this field name)
+        name: profile.full_name,
     };
+
+    // Add optional fields only if they have values
+    if (profile.headline) formatted.headline = profile.headline;
+    if (profile.job_title) formatted.title = profile.job_title;
+    if (profile.company) formatted.company = profile.company;
+    if (profile.location) formatted.location = profile.location;
+    if (yearsOfExperience > 0) formatted.experience_years = yearsOfExperience;
+    
+    // Education - only include if available, limit to top 2, clean empty fields
+    if (profile.educations && profile.educations.length > 0) {
+        const education = profile.educations.slice(0, 2).map(edu => {
+            const eduObj: any = {};
+            if (edu.degree) eduObj.degree = edu.degree;
+            if (edu.field_of_study) eduObj.field = edu.field_of_study;
+            if (edu.school) eduObj.school = edu.school;
+            return eduObj;
+        }).filter(edu => Object.keys(edu).length > 0);
+        
+        if (education.length > 0) formatted.education = education;
+    }
+    
+    // Recent experience - only include if available, limit to top 3, clean empty fields
+    if (profile.experiences && profile.experiences.length > 0) {
+        const experience = profile.experiences.slice(0, 3).map(exp => {
+            const expObj: any = {};
+            if (exp.title) expObj.title = exp.title;
+            if (exp.company) expObj.company = exp.company;
+            if (exp.duration) expObj.duration = exp.duration;
+            if (exp.is_current !== undefined) expObj.current = exp.is_current;
+            return expObj;
+        }).filter(exp => Object.keys(exp).length > 0);
+        
+        if (experience.length > 0) formatted.recent_roles = experience;
+    }
+    
+    // Profile URL - ALWAYS include with intelligent fallback
+    // This ensures agent can always create clickable links
+    formatted.profile_url = generateProfileUrl(profile, uniqueId);
+    
+    // About/Summary - DO NOT TRUNCATE (per user requirement), but only include if exists
+    if (profile.about) formatted.about = profile.about;
+
+    return formatted;
 }
 
