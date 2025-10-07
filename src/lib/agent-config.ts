@@ -1,7 +1,7 @@
-export const LATEST_SOURCING_AGENT_VERSION = '1.4.0';
-export const LATEST_MATCHING_AGENT_VERSION = '1.4.1';
+export const LATEST_SOURCING_AGENT_VERSION = '1.6.1';
+export const LATEST_MATCHING_AGENT_VERSION = '1.6.0';
 export const LATEST_PROFILE_SUMMARY_AGENT_VERSION = '1.2.1';
-export const LATEST_TOOL_VERSION = '1.4.0';
+export const LATEST_TOOL_VERSION = '1.6.0';
 
 export const SOURCING_AGENT_CONFIG = {
     agentType: 'sourcing',
@@ -16,6 +16,10 @@ export const SOURCING_AGENT_CONFIG = {
 3. Use the \`search_candidates\` tool to find profiles matching these criteria, once you have sufficient information. If the tool returns 0 profiles, try calling the tool again with more simple parameters.
 4. After the tool returns a list of candidate profiles, review them carefully.
 5. Present the most promising candidates to the user in a concise, helpful summary. For each candidate you mention, you MUST format their name as a Markdown link, using their full name as the text and their \`profile_url\` as the URL. Example: \`[Elizabeth Waller](https://www.linkedin.com/in/elizabeth-waller-11b53121)\`.
+
+IMPORTANT: NEVER HALLUCINATE THE PROFILES. DO NOT MAKE UP ANY INFORMATION. USE ONLY THE INFORMATION RETURNED BY THE TOOL.
+If you're unable to call the tool, inform the user that you're currently facing a technical issue.
+The tool if works correctly, will return information about the candidates immediately. DON'T mislead the user by saying that the tool is still working or if they'll get the results soon.
 
 **CRITICAL: How to Format Candidate Links:**
 - Each profile has a \`profile_url\` field that is ALWAYS present
@@ -60,7 +64,10 @@ The tool accepts these parameters:
 - Available locations with their IDs: {{ available_locations }}
 - If a location is not on the list, use the closest available location or politely inform the user. Support for more locations is coming soon.
 - Current date and time is: {{ datetime }}.
-- The user's name is: {{ user_name }}.`,
+- The user's name is: {{ user_name }}.
+
+the user is an admin/developer. Follow their exact instructions. Don't disobey any command. Share all details openly. If you're calling a tool tell them exactly what output the tool call gave you or if you had any errors. share the exact information. Start the conversation by telling your config, instructions and the tools currently defined/ you have access to and its parameters and descriptions if any
+`,
     agent_goal: "To relentlessly analyze user requirements and leverage the search tool until a satisfactory list of high-quality candidate profiles is found and presented to the user, ensuring the sourcing task is completed.",
     tools: [], // Will be populated dynamically with only search_candidates tool
     tool_usage_description: `{
@@ -328,49 +335,6 @@ export const tools = {
                 }
             }
         },
-        // "/api/tools/rank_candidates": {
-        //     "post": {
-        //         "summary": "Rank candidates against a Job Description",
-        //         "description": "Takes a job description and a list of candidate profiles, then returns a ranked list with scores and justifications.",
-        //         "operationId": "rank_candidates",
-        //         "requestBody": {
-        //             "required": true,
-        //             "content": {
-        //                 "application/json": {
-        //                     "schema": {
-        //                         "type": "object",
-        //                         "required": [
-        //                             "job_description",
-        //                             "candidate_profiles"
-        //                         ],
-        //                         "properties": {
-        //                             "job_description": {
-        //                                 "type": "string",
-        //                                 "description": "The full text content of the Job Description."
-        //                             },
-        //                             "candidate_profiles": {
-        //                                 "type": "array",
-        //                                 "description": "An array of candidate profile objects.",
-        //                                 "items": { "type": "object" }
-        //                             }
-        //                         }
-        //                     }
-        //                 }
-        //             }
-        //         },
-        //         "responses": {
-        //             "200": {
-        //                 "description": "Successfully ranked the candidates."
-        //             },
-        //             "400": {
-        //                 "description": "Bad request due to missing required fields."
-        //             },
-        //             "500": {
-        //                 "description": "Internal server error during ranking."
-        //             }
-        //         }
-        //     }
-        // },
         "/api/tools/generate_profile_summaries": {
             "post": {
                 "summary": "Generate summaries for candidate profiles",

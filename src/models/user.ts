@@ -5,6 +5,10 @@ export interface IUser {
   email: string;
   displayName: string;
   lyzrApiKey: string;
+  tools?: {
+    version: string;
+    toolIds: string[];
+  };
   sourcingAgent: {
     agentId: string;
     version: string;
@@ -26,6 +30,10 @@ const UserSchema: Schema<IUserDocument> = new Schema<IUserDocument>(
     email: { type: String, required: true, unique: true },
     displayName: { type: String, required: true },
     lyzrApiKey: { type: String, required: true },
+    tools: {
+      version: { type: String },
+      toolIds: { type: [String], default: [] },
+    },
     sourcingAgent: {
       agentId: { type: String, required: true },
       version: { type: String, required: true },

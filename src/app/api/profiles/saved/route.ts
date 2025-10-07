@@ -4,6 +4,10 @@ import User from '@/models/user';
 import SavedProfile from '@/models/savedProfile';
 import CandidateProfile from '@/models/candidateProfile';
 
+// Ensure models are registered
+import '@/models/candidateProfile';
+import '@/models/savedProfile';
+
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
   const expectedToken = process.env.API_AUTH_TOKEN;
@@ -30,7 +34,7 @@ export async function GET(request: NextRequest) {
     // Find all saved profiles for the user
     const savedProfiles = await SavedProfile.find({ user: user._id }).populate({
       path: 'candidate',
-      model: 'CandidateProfile'
+      model: CandidateProfile
     });
     
     // Extract the publicId from the populated candidate document
