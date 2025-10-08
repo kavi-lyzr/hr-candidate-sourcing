@@ -248,20 +248,20 @@ export function calculateYearsOfExperience(profile: LinkedInProfile): number {
 
 /**
  * Derive a unique identifier from profile
- * Priority: public_id > profile_id > linkedin_url extraction > fallback hash
+ * Priority: public_id > linkedin_url extraction > profile_id > fallback hash
  */
 export function deriveProfileId(profile: LinkedInProfile): string {
     // 1. Try public_id
     if (profile.public_id) return profile.public_id;
     
-    // 2. Try profile_id
-    if (profile.profile_id) return profile.profile_id;
-    
-    // 3. Try extracting from linkedin_url
+    // 2. Try extracting from linkedin_url (prioritize this over profile_id)
     if (profile.linkedin_url) {
         const match = profile.linkedin_url.match(/linkedin\.com\/in\/([^/?]+)/);
         if (match && match[1]) return match[1];
     }
+    
+    // 3. Try profile_id (numeric ID - only use as last resort)
+    if (profile.profile_id) return profile.profile_id;
     
     // 4. Fallback: generate a stable hash from name and company
     // This ensures we always have an ID, even if LinkedIn data is incomplete
@@ -281,7 +281,7 @@ export function deriveProfileId(profile: LinkedInProfile): string {
 
 /**
  * Generate a profile URL with intelligent fallback
- * Priority: linkedin_url > constructed linkedin > google search
+ * Priority: linkedin_url > google search (no more constructed LinkedIn URLs)
  */
 export function generateProfileUrl(profile: LinkedInProfile, uniqueId: string): string {
     // 1. Try direct LinkedIn URL
@@ -289,13 +289,7 @@ export function generateProfileUrl(profile: LinkedInProfile, uniqueId: string): 
         return profile.linkedin_url;
     }
     
-    // 2. Try constructing LinkedIn URL from uniqueId (if it looks like a LinkedIn slug)
-    // LinkedIn slugs typically don't contain 'at' or excessive hyphens
-    if (uniqueId && !uniqueId.includes('-at-') && uniqueId.split('-').length <= 4) {
-        return `https://www.linkedin.com/in/${uniqueId}`;
-    }
-    
-    // 3. Fallback to Google search URL
+    // 2. Fallback to Google search URL (no more constructed LinkedIn URLs)
     const searchTerms = [];
     
     if (profile.full_name) searchTerms.push(profile.full_name);
