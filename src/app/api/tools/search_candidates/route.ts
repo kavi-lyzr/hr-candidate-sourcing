@@ -235,7 +235,8 @@ export async function POST(request: Request) {
             const session = await SearchSession.findById(session_id);
             if (session) {
                 // SECURITY: Verify session belongs to the authenticated user
-                const user = await User.findById(userId);
+                // userId contains lyzrUserId, so we need to find user by lyzrUserId field
+                const user = await User.findOne({ lyzrUserId: userId });
                 if (!user || !session.user.equals(user._id)) {
                     console.error(`❌ SECURITY VIOLATION: Session ${session_id} does not belong to user ${userId}`);
                     return NextResponse.json({ 

@@ -169,17 +169,42 @@ async function createLyzrAgent(apiKey: string, agentConfig: any, allToolIds: str
         agentConfig.agentType
     );
 
+    // Create tool_configs array with raw text descriptions
+    const toolConfigs = createAgentToolIds.map(toolId => {
+        // Extract raw text from tool_usage_description JSON
+        let rawDescription = updatedToolUsageDescription;
+        try {
+            const parsed = JSON.parse(updatedToolUsageDescription);
+            const toolKey = Object.keys(parsed)[0];
+            if (parsed[toolKey] && Array.isArray(parsed[toolKey]) && parsed[toolKey].length > 0) {
+                rawDescription = parsed[toolKey][0];
+            }
+        } catch (e) {
+            // If parsing fails, use the description as-is
+            console.log('Could not parse tool_usage_description, using as-is:', updatedToolUsageDescription);
+        }
+        
+        return {
+            tool_name: toolId,
+            tool_source: "openapi",
+            action_names: [rawDescription],
+            persist_auth: false
+        };
+    });
+
     // Remove agentType from payload (it's for internal use only)
     const { agentType, ...configWithoutInternal } = agentConfig;
 
     const payload = {
         ...configWithoutInternal,
-        tools: createAgentToolIds,
+        tools: createAgentToolIds, // Use 'tools' array
+        tool_configs: toolConfigs,
         tool_usage_description: updatedToolUsageDescription,
         store_messages: true, // Enable message storage like helpdesk app
     };
 
     console.log(`Creating ${agentType} agent with tools:`, createAgentToolIds);
+    console.log(`Tool configs:`, toolConfigs);
 
     const response = await fetch(`${LYZR_AGENT_BASE_URL}/v3/agents/`, {
         method: 'POST',
@@ -207,17 +232,42 @@ async function updateLyzrAgent(apiKey: string, agentId: string, agentConfig: any
         agentConfig.agentType
     );
 
+    // Create tool_configs array with raw text descriptions
+    const toolConfigs = updateAgentToolIds.map(toolId => {
+        // Extract raw text from tool_usage_description JSON
+        let rawDescription = updatedToolUsageDescription;
+        try {
+            const parsed = JSON.parse(updatedToolUsageDescription);
+            const toolKey = Object.keys(parsed)[0];
+            if (parsed[toolKey] && Array.isArray(parsed[toolKey]) && parsed[toolKey].length > 0) {
+                rawDescription = parsed[toolKey][0];
+            }
+        } catch (e) {
+            // If parsing fails, use the description as-is
+            console.log('Could not parse tool_usage_description, using as-is:', updatedToolUsageDescription);
+        }
+        
+        return {
+            tool_name: toolId,
+            tool_source: "openapi",
+            action_names: [rawDescription],
+            persist_auth: false
+        };
+    });
+
     // Remove agentType from payload (it's for internal use only)
     const { agentType, ...configWithoutInternal } = agentConfig;
 
     const payload = {
         ...configWithoutInternal,
-        tools: updateAgentToolIds,
+        tools: updateAgentToolIds, // Use 'tools' array
+        tool_configs: toolConfigs,
         tool_usage_description: updatedToolUsageDescription,
         store_messages: true, // Enable message storage like helpdesk app
     };
 
     console.log(`Updating ${agentType} agent with tools:`, updateAgentToolIds);
+    console.log(`Tool configs:`, toolConfigs);
 
     const response = await fetch(`${LYZR_AGENT_BASE_URL}/v3/agents/${agentId}`, {
         method: 'PUT',

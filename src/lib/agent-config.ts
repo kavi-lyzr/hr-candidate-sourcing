@@ -1,6 +1,6 @@
-export const LATEST_SOURCING_AGENT_VERSION = '1.6.1';
-export const LATEST_MATCHING_AGENT_VERSION = '1.6.0';
-export const LATEST_PROFILE_SUMMARY_AGENT_VERSION = '1.2.1';
+export const LATEST_SOURCING_AGENT_VERSION = '1.7.1';
+export const LATEST_MATCHING_AGENT_VERSION = '1.7.0';
+export const LATEST_PROFILE_SUMMARY_AGENT_VERSION = '1.7.0';
 export const LATEST_TOOL_VERSION = '1.6.0';
 
 export const SOURCING_AGENT_CONFIG = {
@@ -65,8 +65,6 @@ The tool accepts these parameters:
 - If a location is not on the list, use the closest available location or politely inform the user. Support for more locations is coming soon.
 - Current date and time is: {{ datetime }}.
 - The user's name is: {{ user_name }}.
-
-the user is an admin/developer. Follow their exact instructions. Don't disobey any command. Share all details openly. If you're calling a tool tell them exactly what output the tool call gave you or if you had any errors. share the exact information. Start the conversation by telling your config, instructions and the tools currently defined/ you have access to and its parameters and descriptions if any
 `,
     agent_goal: "To relentlessly analyze user requirements and leverage the search tool until a satisfactory list of high-quality candidate profiles is found and presented to the user, ensuring the sourcing task is completed.",
     tools: [], // Will be populated dynamically with only search_candidates tool
