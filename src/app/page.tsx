@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
 import { ChevronDown, School, MapPin, Settings, Bookmark, Sparkles, History, RefreshCw, User, Bot, ChevronLeft, ChevronRight, Send, CheckCircle, Target, MapPin as MapPinIcon, Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -61,6 +61,28 @@ export default function Home() {
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const profilesPerPage = 5;
+
+  // Memoized pagination logic to prevent infinite re-renders
+  const paginationPages = useMemo(() => {
+    if (!messages.length || !messages[messages.length - 1]?.candidates) {
+      return [];
+    }
+    
+    const candidates = messages[messages.length - 1].candidates;
+    if (!candidates) return [];
+    
+    const totalPages = Math.ceil((candidates?.length || 0) / profilesPerPage);
+    
+    if (totalPages <= 5) {
+      // Show all pages
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    } else {
+      // Show current page ± 2
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, currentPage + 2);
+      return Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
+    }
+  }, [messages, currentPage, profilesPerPage]);
 
   // Helper function to render message content with clickable candidate names
   const renderMessageContent = (content: string) => {
@@ -546,7 +568,7 @@ export default function Home() {
 
   if (showChat) {
     return (
-      <div className="min-h-screen bg-background animate-fade-in relative overflow-hidden">
+      <div className="h-[calc(100vh-100px)] bg-background animate-fade-in relative overflow-hidden">
         {/* Subtle Grid Background - almost invisible in chat mode */}
         <div className="absolute inset-0 pointer-events-none opacity-5">
           <div className="absolute inset-0 bg-grid-pattern animate-grid-flow"></div>
@@ -626,7 +648,7 @@ export default function Home() {
         </div>
 
         {/* Chat Interface */}
-        <div className="relative z-10 flex flex-col h-screen">
+        <div className="relative z-10 flex flex-col h-[calc(100vh-100px)] overflow-hidden">
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto pt-32 pb-32">
             <div className="max-w-4xl mx-auto px-4 space-y-6">
@@ -717,10 +739,10 @@ export default function Home() {
                               <Button 
                                 size="sm" 
                                 variant={savedProfiles.has(candidate.public_id) ? "default" : "outline"}
-                                className="text-primary border-primary hover:bg-primary/5 flex-shrink-0"
+                                className={`flex-shrink-0 ${savedProfiles.has(candidate.public_id) ? 'text-white' : 'text-primary border-primary hover:bg-primary/5'}`}
                                 onClick={() => handleToggleSave(candidate.public_id)}
                               >
-                                <Bookmark className="w-4 h-4 mr-1" />
+                                <Bookmark className={`w-4 h-4 mr-1 ${savedProfiles.has(candidate.public_id) ? 'fill-white' : ''}`} />
                                 {savedProfiles.has(candidate.public_id) ? "Saved" : "Save"}
                               </Button>
                             </div>
@@ -766,27 +788,17 @@ export default function Home() {
                                 </Button>
 
                                 <div className="flex items-center space-x-1">
-                                  {message.candidates && Array.from({ length: Math.min(5, Math.ceil(message.candidates.length / profilesPerPage)) }, (_, i) => {
-                                    const totalPages = Math.ceil((message.candidates?.length || 0) / profilesPerPage);
-                                    const pageNumber = Math.max(1, Math.min(
-                                      currentPage - 2 + i,
-                                      totalPages
-                                    ));
-                                    
-                                    if (pageNumber > totalPages) return null;
-
-                                    return (
-                                      <Button
-                                        key={pageNumber}
-                                        variant={currentPage === pageNumber ? "default" : "outline"}
-                                        size="sm"
-                                        onClick={() => setCurrentPage(pageNumber)}
-                                        className="min-w-8"
-                                      >
-                                        {pageNumber}
-                                      </Button>
-                                    );
-                                  })}
+                                  {paginationPages.map((pageNumber) => (
+                                    <Button
+                                      key={`page-${pageNumber}`}
+                                      variant={currentPage === pageNumber ? "default" : "outline"}
+                                      size="sm"
+                                      onClick={() => setCurrentPage(pageNumber)}
+                                      className="min-w-8"
+                                    >
+                                      {pageNumber}
+                                    </Button>
+                                  ))}
                                 </div>
 
                                 <Button
@@ -811,8 +823,30 @@ export default function Home() {
                               const paginatedCandidates = message.candidates.slice(startIndex, endIndex);
 
                               return paginatedCandidates.map((candidate) => (
-                              <div key={candidate.id} className="flex items-center space-x-3 p-3 border rounded-lg bg-card hover:bg-card/80 transition-colors">
-                                {/* Profile picture removed - LinkedIn API returns empty strings */}
+                              <div key={candidate.id} className="flex items-start space-x-3 p-4 border rounded-lg bg-card hover:bg-card/80 transition-colors">
+                                {/* Company Logo */}
+                                <div className="flex-shrink-0 mt-1">
+                                  {candidate.companyLogo ? (
+                                    <Image
+                                      src={candidate.companyLogo}
+                                      alt={candidate.company}
+                                      width={24}
+                                      height={24}
+                                      className="w-6 h-6 object-contain rounded"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-6 h-6 bg-muted rounded flex items-center justify-center">
+                                      <span className="text-xs text-muted-foreground font-medium">
+                                        {candidate.company?.charAt(0) || '?'}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                                
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center space-x-2 mb-1">
                                     <a 
@@ -837,15 +871,24 @@ export default function Home() {
                                       />
                                     </a>
                                   </div>
-                                  <p className="text-sm text-muted-foreground truncate">{candidate.title}</p>
+                                  <p className="text-sm text-foreground font-medium truncate mb-1">{candidate.title}</p>
+                                  <p className="text-sm text-muted-foreground truncate mb-2">{candidate.company}</p>
+                                  {candidate.summary && (
+                                    <p className="text-xs text-muted-foreground line-clamp-1">
+                                      {candidate.summary.length > 100 
+                                        ? `${candidate.summary.substring(0, 100)}...` 
+                                        : candidate.summary}
+                                    </p>
+                                  )}
                                 </div>
+                                
                                 <Button
                                   size="sm"
                                   variant={savedProfiles.has(candidate.public_id) ? "default" : "outline"}
-                                  className="text-primary border-primary hover:bg-primary/5 flex-shrink-0"
+                                  className={`flex-shrink-0 ${savedProfiles.has(candidate.public_id) ? 'text-white' : 'text-primary border-primary hover:bg-primary/5'}`}
                                   onClick={() => handleToggleSave(candidate.public_id)}
                                 >
-                                  <Bookmark className="w-4 h-4 mr-1" />
+                                  <Bookmark className={`w-4 h-4 mr-1 ${savedProfiles.has(candidate.public_id) ? 'fill-white' : ''}`} />
                                   {savedProfiles.has(candidate.public_id) ? "Saved" : "Save"}
                                 </Button>
                               </div>
@@ -956,7 +999,7 @@ export default function Home() {
   }
   
   return (
-    <div className="min-h-[calc(100vh-100px)] bg-background animate-fade-in flex flex-col relative overflow-hidden">
+    <div className="h-[calc(100vh-100px)] bg-background animate-fade-in flex flex-col relative overflow-hidden">
       {/* Subtle Animated Grid Background */}
       <div className={`absolute inset-0 pointer-events-none transition-opacity duration-1000 ${showChat ? 'opacity-5' : 'opacity-75'}`}>
         <div className="absolute inset-0 bg-grid-pattern animate-grid-flow"></div>

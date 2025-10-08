@@ -96,17 +96,28 @@ export function FilterDialog({ open, onOpenChange, onSaveChanges }: FilterDialog
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div>
-            <DialogTitle className="text-xl font-semibold">Confirm your search filters</DialogTitle>
+            <DialogTitle className="text-xl font-semibold">Search Filters</DialogTitle>
             <DialogDescription className="text-sm text-gray-500">
-              Review and adjust your search criteria to find the best candidates.
+              Advanced filtering features are coming soon.
             </DialogDescription>
           </div>
           <div className="flex items-center gap-3">
-            <Button className="h-8" onClick={onSaveChanges}>Confirm</Button>
+            <Button className="h-8" onClick={onSaveChanges}>Close</Button>
           </div>
         </DialogHeader>
 
-        <div className="space-y-6">
+        {/* Coming Soon Notice */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <span className="text-sm font-medium text-blue-800">Feature Coming Soon</span>
+          </div>
+          <p className="text-sm text-blue-600 mt-1">
+            Advanced filtering capabilities are currently in development. All filter options below are disabled.
+          </p>
+        </div>
+        
+        <div className="space-y-6 opacity-50 pointer-events-none">
           {/* Job Titles Section - FIRST */}
           <div>
             <div className="flex items-center justify-between mb-3">
