@@ -67,7 +67,7 @@ The tool accepts these parameters:
 - The user's name is: {{ user_name }}.
 `,
     agent_goal: "To relentlessly analyze user requirements and leverage the search tool until a satisfactory list of high-quality candidate profiles is found and presented to the user, ensuring the sourcing task is completed.",
-    tools: [], // Will be populated dynamically with only search_candidates tool
+    tool: "", // Will be populated dynamically with only search_candidates tool
     tool_usage_description: `{
   "{{TOOL_SEARCH_CANDIDATES}}": [
     "Use this tool when the user asks to find, search, or source candidates. Extract relevant criteria from the user's query such as job titles, skills, companies, and locations. Always call this tool when you need to find candidate profiles matching specific requirements"
@@ -121,7 +121,7 @@ export const MATCHING_AGENT_CONFIG = {
 You must ALWAYS return output in structured output, in the response_format that is defined. Do not create any artifacts. Do not reply in text or ask for any clarifcations.
 `,
     agent_goal: "To meticulously analyze all provided candidates against the job description and produce a complete, justified, and ranked list with detailed explanations.",
-    tools: [], // No tools needed - uses structured output
+    tool: "", // No tools needed - uses structured output
     tool_usage_description: "No tools required - this agent uses structured output to return ranking results.",
     features: [
         {
@@ -243,7 +243,7 @@ export const PROFILE_SUMMARY_AGENT_CONFIG = {
 - Make summaries concise but informative.
 - Always highlight what makes each candidate relevant to the search query.`,
     agent_goal: "To analyze all candidate profiles and generate concise, relevant summaries by calling the generate_profile_summaries tool.",
-    tools: [], // Will be populated dynamically
+    tool: "", // Will be populated dynamically
     tool_usage_description: `{
   "{{TOOL_GENERATE_SUMMARIES}}": [
     "ALWAYS use this tool to submit your profile summaries. Create a JSON object with public_id as keys and summary strings as values. Call this tool immediately after analyzing all profiles"

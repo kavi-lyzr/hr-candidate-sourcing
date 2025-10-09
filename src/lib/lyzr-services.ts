@@ -160,7 +160,7 @@ function updateToolUsageDescription(description: string, toolIds: string[], agen
 
 async function createLyzrAgent(apiKey: string, agentConfig: any, allToolIds: string[]): Promise<string> {
     // Filter tools for this specific agent
-    const  createAgentToolIds = filterToolsForAgent(allToolIds, agentConfig.agentType);
+    const createAgentToolIds = filterToolsForAgent(allToolIds, agentConfig.agentType);
     
     // Update tool_usage_description with actual tool names
     const updatedToolUsageDescription = updateToolUsageDescription(
@@ -197,7 +197,7 @@ async function createLyzrAgent(apiKey: string, agentConfig: any, allToolIds: str
 
     const payload = {
         ...configWithoutInternal,
-        tools: createAgentToolIds, // Use 'tools' array
+        tool: createAgentToolIds[0], // Use 'tool' string with first tool
         tool_configs: toolConfigs,
         tool_usage_description: updatedToolUsageDescription,
         store_messages: true, // Enable message storage like helpdesk app
@@ -260,7 +260,7 @@ async function updateLyzrAgent(apiKey: string, agentId: string, agentConfig: any
 
     const payload = {
         ...configWithoutInternal,
-        tools: updateAgentToolIds, // Use 'tools' array
+        tool: updateAgentToolIds[0], // Use 'tool' string with first tool
         tool_configs: toolConfigs,
         tool_usage_description: updatedToolUsageDescription,
         store_messages: true, // Enable message storage like helpdesk app
