@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CandidateDetailModal } from "@/components/CandidateDetailModal";
 import { useAuth } from "@/lib/AuthProvider";
 import { toast } from "sonner";
 
@@ -36,6 +37,55 @@ export default function SavedProfiles() {
   const [expandedSearch, setExpandedSearch] = useState<string | null>(null);
   const [searchHistory, setSearchHistory] = useState<SearchSessionGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Modal State
+  const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [candidateDetailsCache, setCandidateDetailsCache] = useState<Map<string, any>>(new Map());
+
+  // Function to fetch full candidate details from database
+  const fetchCandidateDetails = async (publicId: string) => {
+    if (candidateDetailsCache.has(publicId)) {
+      return candidateDetailsCache.get(publicId);
+    }
+
+    try {
+      const response = await fetch('/api/candidates/get-by-ids', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publicIds: [publicId] }),
+      });
+
+      if (response.ok) {
+        const candidates = await response.json();
+        if (Array.isArray(candidates) && candidates.length > 0) {
+          const fullCandidate = candidates[0];
+          setCandidateDetailsCache(prev => new Map(prev).set(publicId, fullCandidate));
+          return fullCandidate;
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching candidate details:', error);
+    }
+    return null;
+  };
+
+  // Function to open detail modal
+  const openCandidateDetail = async (publicId: string) => {
+    if (!publicId) {
+      toast.error('Unable to load candidate details');
+      return;
+    }
+
+    const fullDetails = await fetchCandidateDetails(publicId);
+    
+    if (fullDetails) {
+      setSelectedCandidate(fullDetails);
+      setDetailModalOpen(true);
+    } else {
+      toast.error('Unable to load candidate details');
+    }
+  };
 
   useEffect(() => {
     if (!isAuthenticated || !userId) return;
@@ -193,15 +243,15 @@ export default function SavedProfiles() {
                       {search.savedProfiles.map((profile, index) => (
                         <div 
                           key={profile._id} 
-                          className="bg-muted/50 rounded-lg p-4 hover:bg-muted/70 transition-colors duration-200 animate-fade-in-up"
+                          className="bg-muted/50 rounded-lg p-4 hover:bg-muted/70 transition-colors duration-200 animate-fade-in-up cursor-pointer"
                           style={{ animationDelay: `${index * 50}ms` }}
+                          onClick={() => openCandidateDetail(profile.candidate.publicId)}
                         >
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <div className="flex items-center space-x-3 mb-2">
                                 <h5 
-                                  className="font-medium text-primary hover:text-primary/80 cursor-pointer transition-colors" 
-                                  onClick={() => window.open(`https://www.linkedin.com/in/${profile.candidate.publicId}`, '_blank')}
+                                  className="font-medium text-primary hover:text-primary/80 transition-colors"
                                 >
                                   {profile.candidate.fullName}
                                 </h5>
@@ -210,6 +260,7 @@ export default function SavedProfiles() {
                                   target="_blank" 
                                   rel="noopener noreferrer" 
                                   className="w-5 h-5 hover:opacity-80 transition-opacity"
+                                  onClick={(e) => e.stopPropagation()}
                                 >
                                   <LinkIcon className="w-4 h-4 text-muted-foreground" />
                                 </a>
@@ -231,6 +282,7 @@ export default function SavedProfiles() {
                               variant="outline"
                               className="text-destructive border-destructive/20 hover:bg-destructive/10 hover:border-destructive/30 transition-colors"
                               disabled // Remove functionality is not implemented in this pass
+                              onClick={(e) => e.stopPropagation()}
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Remove
@@ -256,6 +308,13 @@ export default function SavedProfiles() {
           ))}
         </div>
       </div>
+
+      {/* Candidate Detail Modal */}
+      <CandidateDetailModal
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        candidate={selectedCandidate}
+      />
     </div>
   );
 }
