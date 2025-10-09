@@ -1,0 +1,27 @@
+{
+  "name": "Lyzr HR Candidate Sourcing Agent",
+  "short_name": "Lyzr HR Sourcing",
+  "description": "AI-powered candidate sourcing and recruitment platform. Find the perfect candidates for your job openings using advanced AI agents.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#8b5cf6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/lyzr.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/lyzr.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "utilities"],
+  "lang": "en",
+  "dir": "ltr"
+}
