@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import User from '@/models/user';
 import SearchSession from '@/models/searchSession';
+import JobDescription from '@/models/jobDescription';
 import { decrypt, chatWithLyzrAgent } from '@/lib/lyzr-services';
 import { availableLocations } from '@/lib/locations';
 
@@ -36,10 +37,28 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
         }
 
+        // 4. Fetch JD content if jdId is provided
+        let jdContent = null;
+        let jdTitle = null;
+        if (jdId) {
+            try {
+                const jobDescription = await JobDescription.findById(jdId);
+                if (jobDescription) {
+                    jdContent = jobDescription.content;
+                    jdTitle = jobDescription.title;
+                    console.log(`Found JD: ${jdTitle} (${jdId})`);
+                } else {
+                    console.warn(`JD not found: ${jdId}`);
+                }
+            } catch (error) {
+                console.error('Error fetching JD:', error);
+            }
+        }
+
         let searchSession;
         let finalSessionId = sessionId;
 
-        // 4. Create new session or use existing one
+        // 5. Create new session or use existing one
         if (!sessionId) {
             // Create new session
             const title = query.slice(0, 50) + (query.length > 50 ? '...' : '');
@@ -48,6 +67,7 @@ export async function POST(request: Request) {
                 title,
                 initialQuery: query,
                 attachedJd: jdId || null,
+                attachedJdTitle: jdTitle || null,
                 conversationHistory: [{
                     role: 'user',
                     content: query,
@@ -74,7 +94,22 @@ export async function POST(request: Request) {
             console.log(`Updated search session: ${sessionId} for user: ${user.email}`);
         }
 
-        // 5. Prepare system prompt variables
+        // 6. Prepare enhanced query for new sessions with JD
+        let enhancedQuery = query;
+        if (!sessionId && jdContent && jdTitle) {
+            // Only enhance query for new sessions with JD attached
+            enhancedQuery = `Job Description:
+Title: ${jdTitle}
+
+${jdContent}
+
+---
+
+User Query: ${query}`;
+            console.log(`Enhanced query with JD content for new session`);
+        }
+
+        // 7. Prepare system prompt variables
         const systemPromptVariables = {
             user_name: user.name || user.email.split('@')[0],
             session_id: finalSessionId, // Pass session ID to agent for tool calls
@@ -84,20 +119,21 @@ export async function POST(request: Request) {
             datetime: new Date().toISOString(),
         };
 
-        // 6. Decrypt API key and chat with agent
+        // 8. Decrypt API key and chat with agent
         const apiKey = decrypt(dbUser.lyzrApiKey);
 
         console.log('Calling Lyzr agent (non-streaming):', {
             agentId: dbUser.sourcingAgent.agentId,
             userEmail: user.email,
-            message: query.substring(0, 50) + '...',
-            sessionId: finalSessionId
+            message: enhancedQuery.substring(0, 50) + '...',
+            sessionId: finalSessionId,
+            hasJd: !!jdContent
         });
 
         const chatResponse = await chatWithLyzrAgent(
             apiKey,
             dbUser.sourcingAgent.agentId,
-            query,
+            enhancedQuery, // Use enhanced query instead of original
             user.email, // Use email as user_id for Lyzr
             systemPromptVariables,
             finalSessionId
@@ -108,7 +144,7 @@ export async function POST(request: Request) {
             sessionId: chatResponse.session_id
         });
 
-        // 7. Reload session from database to get tool results that were stored by the tool
+        // 9. Reload session from database to get tool results that were stored by the tool
         const updatedSession = await SearchSession.findById(finalSessionId);
         const allProfiles = updatedSession?.toolResults?.allProfiles || null;
         console.log('Tool results from database:', { 
@@ -116,7 +152,7 @@ export async function POST(request: Request) {
             profileCount: allProfiles?.length || 0
         });
 
-        // 8. Save assistant response to session
+        // 10. Save assistant response to session
         searchSession.conversationHistory.push({
             role: 'assistant',
             content: chatResponse.response,
@@ -124,7 +160,7 @@ export async function POST(request: Request) {
         });
         await searchSession.save();
 
-        // 9. Return response with all profiles if available
+        // 11. Return response with all profiles if available
         return NextResponse.json({
             success: true,
             response: chatResponse.response,

@@ -5,6 +5,7 @@ export interface ISearchSession {
   title: string;
   initialQuery: string;
   attachedJd?: mongoose.Types.ObjectId;
+  attachedJdTitle?: string;
   conversationHistory: { role: string; content: string; timestamp: Date }[];
   toolResults?: {
     allProfiles?: any[];
@@ -25,6 +26,7 @@ const SearchSessionSchema: Schema<ISearchSessionDocument> = new Schema<ISearchSe
     title: { type: String, required: true },
     initialQuery: { type: String, required: true },
     attachedJd: { type: Schema.Types.ObjectId, ref: 'JobDescription' },
+    attachedJdTitle: { type: String },
     conversationHistory: [
       {
         role: { type: String, required: true },

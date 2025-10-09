@@ -44,7 +44,7 @@ export default function Home() {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(true);
-  const [selectedJD, setSelectedJD] = useState("");
+  const [selectedJD, setSelectedJD] = useState<{id: string, name: string} | null>(null);
   const [jdDropdownOpen, setJdDropdownOpen] = useState(false);
   const [availableJDs, setAvailableJDs] = useState<Array<{id: string, name: string}>>([]);
   const [isClient, setIsClient] = useState(false);
@@ -54,11 +54,13 @@ export default function Home() {
     messageCount: number;
     lastUpdated: string;
     createdAt: string;
+    attachedJdTitle?: string;
   }>>([]);
 
   // Session State
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [savedProfiles, setSavedProfiles] = useState<Set<string>>(new Set());
+  const [currentSessionJdTitle, setCurrentSessionJdTitle] = useState<string | null>(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -251,12 +253,9 @@ export default function Home() {
     // Enhance query with JD content if JD is selected
     let enhancedQuery = query.trim();
     if (selectedJD) {
-      const selectedJDData = availableJDs.find(jd => jd.name === selectedJD);
-      if (selectedJDData) {
-        // For now, we'll just add the JD title to the query
-        // In a real implementation, you'd fetch the full JD content
-        enhancedQuery = `Job Description: ${selectedJD}\n\nSearch Query: ${query.trim()}`;
-      }
+      // The JD content will be handled by the backend
+      // We just need to pass the original query
+      enhancedQuery = query.trim();
     }
 
     const userMessage: Message = {
@@ -287,7 +286,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           query: enhancedQuery, // Send enhanced query to API
-          jdId: selectedJD || null,
+          jdId: selectedJD?.id || null,
           user: {
             id: userId,
             email: email,
@@ -309,6 +308,10 @@ export default function Home() {
       // Set session ID if this is a new conversation
       if (!currentSessionId) {
         setCurrentSessionId(sessionId);
+        // Set JD title for current session if JD is attached
+        if (selectedJD) {
+          setCurrentSessionJdTitle(selectedJD.name);
+        }
       }
 
       // Parse candidates from markdown links: [Name](public_id)
@@ -569,6 +572,7 @@ export default function Home() {
     setShowChat(false);
     setIsLoading(false);
     setCurrentSessionId(null);
+    setCurrentSessionJdTitle(null);
     setCurrentPage(1); // Reset pagination
   };
 
@@ -626,6 +630,7 @@ export default function Home() {
 
         setMessages(loadedMessages);
         setCurrentSessionId(sessionId);
+        setCurrentSessionJdTitle(session.attachedJdTitle || null);
         setShowChat(true);
         setCurrentPage(1); // Reset pagination for new conversation
 
@@ -739,8 +744,13 @@ export default function Home() {
                         <div className="font-medium text-sm truncate w-full max-w-[180px]">
                           {conversation.title}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(conversation.lastUpdated).toLocaleDateString()} • {conversation.messageCount} messages
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{new Date(conversation.lastUpdated).toLocaleDateString()} • {conversation.messageCount} messages</span>
+                          {conversation.attachedJdTitle && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-primary/10 text-primary border border-primary/20">
+                              JD: {conversation.attachedJdTitle}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <Button
@@ -790,6 +800,16 @@ export default function Home() {
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto pt-32 pb-32">
             <div className="max-w-4xl mx-auto px-4 space-y-6">
+              {/* JD Attachment Indicator */}
+              {currentSessionJdTitle && messages.length > 0 && (
+                <div className="flex justify-center mb-4">
+                  <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20 text-sm text-primary">
+                    <Bookmark className="h-4 w-4" />
+                    <span>Searching with JD: <strong>{currentSessionJdTitle}</strong></span>
+                  </div>
+                </div>
+              )}
+              
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -1093,10 +1113,13 @@ export default function Home() {
                 <div className="relative flex-1">
                   {selectedJD && (
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20 max-w-32">
-                        <span className="truncate">@{selectedJD}</span>
+                      <span 
+                        className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20 max-w-[200px]"
+                        title={selectedJD.name}
+                      >
+                        <span className="truncate">@{selectedJD.name}</span>
                         <button
-                          onClick={() => setSelectedJD("")}
+                          onClick={() => setSelectedJD(null)}
                           className="ml-1 hover:bg-primary/20 rounded-full p-0.5 flex-shrink-0"
                         >
                           ×
@@ -1190,8 +1213,13 @@ export default function Home() {
                       <div className="font-medium text-sm truncate w-full max-w-[180px]">
                         {conversation.title}
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {new Date(conversation.lastUpdated).toLocaleDateString()} • {conversation.messageCount} messages
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{new Date(conversation.lastUpdated).toLocaleDateString()} • {conversation.messageCount} messages</span>
+                        {conversation.attachedJdTitle && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-primary/10 text-primary border border-primary/20">
+                            JD: {conversation.attachedJdTitle}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <Button
@@ -1271,10 +1299,13 @@ export default function Home() {
             <div className="relative">
               {selectedJD && (
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20 max-w-48">
-                    <span className="truncate">@{selectedJD}</span>
+                  <span 
+                    className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20 max-w-[300px]"
+                    title={selectedJD.name}
+                  >
+                    <span className="truncate">@{selectedJD.name}</span>
                     <button
-                      onClick={() => setSelectedJD("")}
+                      onClick={() => setSelectedJD(null)}
                       className="ml-1 hover:bg-primary/20 rounded-full p-0.5 flex-shrink-0"
                     >
                       <X className="h-4 w-4" />
@@ -1294,7 +1325,7 @@ export default function Home() {
                   }
                 }
               }}
-              className={`min-h-14 max-h-32 text-base ${selectedJD ? 'pl-52' : 'pl-4'} pr-24 border-2 border-border focus:border-primary rounded-lg shadow-sm resize-none bg-background/80 backdrop-blur-2xl`}
+              className={`min-h-14 max-h-32 text-base ${selectedJD ? 'pl-80' : 'pl-4'} pr-24 border-2 border-border focus:border-primary rounded-lg shadow-sm resize-none bg-background/80 backdrop-blur-2xl`}
               rows={1}
             />
             </div>
@@ -1317,7 +1348,7 @@ export default function Home() {
                 onClick={() => setJdDropdownOpen(!jdDropdownOpen)}
                 className="flex items-center space-x-2"
               >
-                {selectedJD || "Select JD"}
+                {selectedJD?.name || "Select JD"}
                 <ChevronDown className="w-4 h-4" />
               </Button>
               {jdDropdownOpen && (
@@ -1344,7 +1375,7 @@ export default function Home() {
                             size="sm"
                             className="w-full justify-start truncate max-w-full"
                             onClick={() => {
-                              setSelectedJD(jd.name);
+                              setSelectedJD({id: jd.id, name: jd.name});
                               setJdDropdownOpen(false);
                             }}
                           >
