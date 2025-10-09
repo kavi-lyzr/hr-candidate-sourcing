@@ -32,6 +32,7 @@ export async function GET(
                 title: session.title,
                 initialQuery: session.initialQuery,
                 conversationHistory: session.conversationHistory,
+                toolResults: session.toolResults, // Include tool results for candidate data
                 createdAt: session.createdAt,
                 updatedAt: session.updatedAt,
             }

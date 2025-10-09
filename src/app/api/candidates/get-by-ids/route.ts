@@ -20,22 +20,12 @@ export async function POST(request: Request) {
 
     console.log(`Found ${profiles.length} profiles in database`);
 
-    const formatted = profiles.map(profile => {
-      const data = profile.rawData;
-      return {
-        id: data.public_id,
-        name: data.full_name,
-        title: data.job_title || 'No title available',
-        company: data.company || 'No company',
-        location: data.location || 'Location not specified',
-        education: data.educations?.[0]?.school || '',
-        summary: data.about?.substring(0, 200) || 'No summary available',
-        companyLogo: data.company_logo_url || '',
-        profilePic: data.profile_image_url || '',
-        linkedinUrl: data.linkedin_url || '',
-        public_id: data.public_id,
-      };
-    });
+    // Return full profile data including rawData for modal display
+    const formatted = profiles.map(profile => ({
+      publicId: profile.publicId,
+      rawData: profile.rawData,
+      lastFetchedAt: profile.lastFetchedAt,
+    }));
 
     return NextResponse.json(formatted);
   } catch (error: any) {

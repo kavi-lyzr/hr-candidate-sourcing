@@ -1,6 +1,6 @@
-export const LATEST_SOURCING_AGENT_VERSION = '1.7.1';
-export const LATEST_MATCHING_AGENT_VERSION = '1.7.0';
-export const LATEST_PROFILE_SUMMARY_AGENT_VERSION = '1.7.0';
+export const LATEST_SOURCING_AGENT_VERSION = '1.7.2';
+export const LATEST_MATCHING_AGENT_VERSION = '1.7.2';
+export const LATEST_PROFILE_SUMMARY_AGENT_VERSION = '1.7.2';
 export const LATEST_TOOL_VERSION = '1.6.0';
 
 export const SOURCING_AGENT_CONFIG = {
@@ -87,6 +87,8 @@ The tool accepts these parameters:
     llm_credential_id: 'lyzr_openai',
     temperature: 0.5,
     top_p: 0.9,
+    response_format: { "type": "text" },
+    managed_agents: []
 };
 
 export const MATCHING_AGENT_CONFIG = {
@@ -220,6 +222,7 @@ You must ALWAYS return output in structured output, in the response_format that 
             }
         }
     },
+    managed_agents: []
 };
 
 export const PROFILE_SUMMARY_AGENT_CONFIG = {
@@ -251,6 +254,8 @@ export const PROFILE_SUMMARY_AGENT_CONFIG = {
     llm_credential_id: 'lyzr_openai',
     temperature: 0.3,
     top_p: 1,
+    response_format: { "type": "text" },
+    managed_agents: []
 };
 
 export const tools = {

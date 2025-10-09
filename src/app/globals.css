@@ -357,6 +357,14 @@ body.no-gradient-background {
   line-clamp: 1;
 }
 
+.line-clamp-8 {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 8;
+  line-clamp: 8;
+}
+
 ::selection {
   @apply bg-primary text-primary-foreground;
 }

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FilterDialog } from "@/components/filter-dialog";
+import { CandidateDetailModal } from "@/components/CandidateDetailModal";
+import { CandidateHoverCard } from "@/components/CandidateHoverCard";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/AuthProvider";
 import { toast } from "sonner";
@@ -62,6 +64,73 @@ export default function Home() {
   const [currentPage, setCurrentPage] = useState(1);
   const profilesPerPage = 5;
 
+  // Modal State
+  const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [candidateDetailsCache, setCandidateDetailsCache] = useState<Map<string, any>>(new Map());
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Function to fetch full candidate details from database
+  const fetchCandidateDetails = async (publicId: string) => {
+    // Check cache first
+    if (candidateDetailsCache.has(publicId)) {
+      console.log('[Modal] Using cached details for:', publicId);
+      return candidateDetailsCache.get(publicId);
+    }
+
+    try {
+      console.log('[Modal] Fetching details for:', publicId);
+      const response = await fetch('/api/candidates/get-by-ids', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publicIds: [publicId] }),
+      });
+
+      if (response.ok) {
+        const candidates = await response.json();
+        console.log('[Modal] API Response:', candidates);
+        
+        if (Array.isArray(candidates) && candidates.length > 0) {
+          const fullCandidate = candidates[0];
+          // Cache the result
+          setCandidateDetailsCache(prev => new Map(prev).set(publicId, fullCandidate));
+          console.log('[Modal] Successfully fetched and cached details');
+          return fullCandidate;
+        }
+      } else {
+        console.error('[Modal] API error:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('[Modal] Error fetching candidate details:', error);
+    }
+    return null;
+  };
+
+  // Function to open detail modal
+  const openCandidateDetail = async (candidate: any) => {
+    console.log('[Modal] Opening detail for candidate:', candidate);
+    const publicId = candidate.public_id || candidate.id;
+    
+    if (!publicId) {
+      console.error('[Modal] No public_id found in candidate:', candidate);
+      toast.error('Unable to load candidate details');
+      return;
+    }
+
+    const fullDetails = await fetchCandidateDetails(publicId);
+    
+    if (fullDetails) {
+      console.log('[Modal] Setting selected candidate and opening modal');
+      setSelectedCandidate(fullDetails);
+      setDetailModalOpen(true);
+    } else {
+      // Fallback to partial data
+      console.log('[Modal] Using fallback partial data');
+      setSelectedCandidate(candidate);
+      setDetailModalOpen(true);
+    }
+  };
+
   // Memoized pagination logic to prevent infinite re-renders
   const paginationPages = useMemo(() => {
     if (!messages.length || !messages[messages.length - 1]?.candidates) {
@@ -85,7 +154,7 @@ export default function Home() {
   }, [messages, currentPage, profilesPerPage]);
 
   // Helper function to render message content with clickable candidate names
-  const renderMessageContent = (content: string) => {
+  const renderMessageContent = (content: string, messageCandidates?: any[]) => {
     // Parse markdown links: [Name](url)
     // The URL can be a full URL (LinkedIn or Google search) or just a public_id
     const parts = [];
@@ -99,26 +168,63 @@ export default function Home() {
         parts.push(content.substring(lastIndex, match.index));
       }
       
-      // Add the clickable link
+      // Add the clickable link with hover card
       const name = match[1];
       const urlOrId = match[2];
+      
+      // Extract public_id from the URL
+      let publicId = urlOrId;
+      if (urlOrId.includes('linkedin.com/in/')) {
+        // Extract from LinkedIn URL: https://www.linkedin.com/in/public-id/
+        const match = urlOrId.match(/linkedin\.com\/in\/([^/]+)/);
+        if (match) publicId = match[1];
+      } else if (!urlOrId.startsWith('http')) {
+        // It's already a public_id
+        publicId = urlOrId;
+      }
+      
+      // Find candidate in messageCandidates
+      const candidate = messageCandidates?.find(c => 
+        c.public_id === publicId || c.id === publicId
+      );
       
       // Determine if it's a full URL or just an ID
       const finalUrl = urlOrId.startsWith('http') 
         ? urlOrId 
         : `https://www.linkedin.com/in/${urlOrId}`;
       
-      parts.push(
+      const linkElement = (
         <a
-          key={match.index}
           href={finalUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="text-primary hover:underline font-medium"
+          onClick={(e) => {
+            // Prevent default if we have candidate data and can open modal
+            if (candidate) {
+              e.preventDefault();
+              openCandidateDetail(candidate);
+            }
+          }}
         >
           {name}
         </a>
       );
+      
+      // Wrap with hover card if we have candidate data
+      if (candidate) {
+        parts.push(
+          <CandidateHoverCard
+            key={match.index}
+            candidate={candidate}
+            onViewDetails={() => openCandidateDetail(candidate)}
+          >
+            {linkElement}
+          </CandidateHoverCard>
+        );
+      } else {
+        parts.push(<span key={match.index}>{linkElement}</span>);
+      }
       
       lastIndex = regex.lastIndex;
     }
@@ -469,6 +575,7 @@ export default function Home() {
   const loadConversation = async (sessionId: string) => {
     try {
       console.log(`Loading conversation: ${sessionId}`);
+      setLoadingHistory(true);
       
       const response = await fetch(`/api/chat/session/${sessionId}`, {
         headers: {
@@ -480,27 +587,57 @@ export default function Home() {
         const data = await response.json();
         const session = data.session;
         
+        // Extract candidate profiles from toolResults
+        const allProfiles = session.toolResults?.allProfiles || [];
+        console.log(`Loading conversation with ${allProfiles.length} candidate profiles`);
+        
         // Convert conversation history to messages
-        const loadedMessages: Message[] = session.conversationHistory.map((msg: any, index: number) => ({
-          id: `${sessionId}-${index}`,
-          content: msg.content,
-          role: msg.role,
-          timestamp: new Date(msg.timestamp),
-          // TODO: Load candidates if they were saved
-        }));
+        const loadedMessages: Message[] = session.conversationHistory.map((msg: any, index: number) => {
+          const message: Message = {
+            id: `${sessionId}-${index}`,
+            content: msg.content,
+            role: msg.role,
+            timestamp: new Date(msg.timestamp),
+          };
+          
+          // Attach candidates to assistant messages that mention profiles
+          if (msg.role === 'assistant' && allProfiles.length > 0) {
+            // Check if this message contains candidate links
+            const candidateRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+            if (candidateRegex.test(msg.content)) {
+              // Format candidates for display
+              message.candidates = allProfiles.map((profile: any) => ({
+                id: profile.public_id,
+                name: profile.full_name,
+                title: profile.job_title || 'No title available',
+                company: profile.company || 'No company',
+                location: profile.location || 'Location not specified',
+                education: profile.education?.[0]?.school || '',
+                summary: profile.about || 'No summary available',
+                companyLogo: profile.company_logo_url || '',
+                linkedinUrl: profile.linkedin_url || profile.profile_url || `https://www.linkedin.com/in/${profile.public_id}`,
+                public_id: profile.public_id,
+              }));
+            }
+          }
+          
+          return message;
+        });
 
         setMessages(loadedMessages);
         setCurrentSessionId(sessionId);
         setShowChat(true);
         setCurrentPage(1); // Reset pagination for new conversation
 
-        console.log(`Loaded ${loadedMessages.length} messages`);
+        console.log(`Loaded ${loadedMessages.length} messages with ${allProfiles.length} candidate profiles`);
       } else {
         toast.error('Failed to load conversation');
       }
     } catch (error) {
       console.error('Error loading conversation:', error);
       toast.error('Failed to load conversation');
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
@@ -591,14 +728,15 @@ export default function Home() {
                   {conversationHistory.map((conversation) => (
                     <DropdownMenuItem
                       key={conversation.sessionId}
-                      className="flex items-center justify-between gap-2 p-3 cursor-pointer"
+                      className="flex items-center gap-2 p-3 cursor-pointer relative pr-10"
                       onSelect={(e) => e.preventDefault()}
+                      disabled={loadingHistory}
                     >
                       <div 
-                        className="flex-1 flex flex-col items-start gap-1"
-                        onClick={() => loadConversation(conversation.sessionId)}
+                        className="flex-1 flex flex-col items-start gap-1 min-w-0"
+                        onClick={() => !loadingHistory && loadConversation(conversation.sessionId)}
                       >
-                        <div className="font-medium text-sm truncate w-full">
+                        <div className="font-medium text-sm truncate w-full max-w-[180px]">
                           {conversation.title}
                         </div>
                         <div className="text-xs text-muted-foreground">
@@ -608,13 +746,13 @@ export default function Home() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                        className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive absolute right-2 top-1/2 -translate-y-1/2 flex-shrink-0"
                         onClick={(e) => {
                           e.stopPropagation();
                           deleteConversation(conversation.sessionId);
                         }}
                       >
-                        ×
+                        <X className="h-4 w-4" />
                       </Button>
                     </DropdownMenuItem>
                   ))}
@@ -670,13 +808,17 @@ export default function Home() {
                     }`}
                   >
                     <div className={`text-sm leading-relaxed whitespace-pre-wrap ${message.role === 'user' ? 'text-primary-foreground' : 'text-foreground'}`}>
-                      {message.role === 'assistant' ? renderMessageContent(message.content) : message.content}
+                      {message.role === 'assistant' ? renderMessageContent(message.content, message.candidates) : message.content}
                     </div>
                     {message.candidates && (
                       <div className="mt-4 space-y-4">
                         <h4 className="font-semibold text-primary mb-3">Top Recommendations</h4>
                         {message.candidates.slice(0, 3).map((candidate) => (
-                            <div key={candidate.id} className="border rounded-lg p-4 bg-card/50 hover:bg-card transition-colors">
+                            <div 
+                              key={candidate.id} 
+                              className="border rounded-lg p-4 bg-card/50 hover:bg-card transition-colors cursor-pointer"
+                              onClick={() => openCandidateDetail(candidate)}
+                            >
                             <div className="flex items-start space-x-3">
                               {/* Profile picture removed - LinkedIn API returns empty strings */}
                               <div className="flex-1">
@@ -731,8 +873,8 @@ export default function Home() {
                     )}
                     <div className="mt-2">
                       <div className="flex items-start space-x-2">
-                                    <Sparkles className="h-4 w-4 text-primary mt-0.5" />
-                                    <p className="text-sm text-muted-foreground italic">{candidate.summary}</p>
+                                    <Sparkles className="min-h-4 min-w-4 text-primary mt-0.5" />
+                                    <p className="text-sm text-muted-foreground italic line-clamp-8">{candidate.summary}</p>
                                   </div>
                                 </div>
                               </div>
@@ -823,7 +965,15 @@ export default function Home() {
                               const paginatedCandidates = message.candidates.slice(startIndex, endIndex);
 
                               return paginatedCandidates.map((candidate) => (
-                              <div key={candidate.id} className="flex items-start space-x-3 p-4 border rounded-lg bg-card hover:bg-card/80 transition-colors">
+                              <div 
+                                key={candidate.id} 
+                                className="flex items-start space-x-3 p-4 border rounded-lg bg-card hover:bg-card/80 transition-colors cursor-pointer"
+                                onClick={(e) => {
+                                  // Don't trigger if clicking the save button
+                                  if ((e.target as HTMLElement).closest('button')) return;
+                                  openCandidateDetail(candidate);
+                                }}
+                              >
                                 {/* Company Logo */}
                                 <div className="flex-shrink-0 mt-1">
                                   {candidate.companyLogo ? (
@@ -994,6 +1144,13 @@ export default function Home() {
           onOpenChange={setFilterDialogOpen}
           onSaveChanges={() => setFilterDialogOpen(false)}
         />
+
+        {/* Candidate Detail Modal */}
+        <CandidateDetailModal
+          open={detailModalOpen}
+          onOpenChange={setDetailModalOpen}
+          candidate={selectedCandidate}
+        />
       </div>
     );
   }
@@ -1022,14 +1179,15 @@ export default function Home() {
                 {conversationHistory.map((conversation) => (
                   <DropdownMenuItem
                     key={conversation.sessionId}
-                    className="flex items-center justify-between gap-2 p-3 cursor-pointer"
+                    className="flex items-center gap-2 p-3 cursor-pointer relative pr-10"
                     onSelect={(e) => e.preventDefault()}
+                    disabled={loadingHistory}
                   >
                     <div 
-                      className="flex-1 flex flex-col items-start gap-1"
-                      onClick={() => loadConversation(conversation.sessionId)}
+                      className="flex-1 flex flex-col items-start gap-1 min-w-0"
+                      onClick={() => !loadingHistory && loadConversation(conversation.sessionId)}
                     >
-                      <div className="font-medium text-sm truncate w-full">
+                      <div className="font-medium text-sm truncate w-full max-w-[180px]">
                         {conversation.title}
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -1039,7 +1197,7 @@ export default function Home() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                      className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive absolute right-2 top-1/2 -translate-y-1/2 flex-shrink-0"
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteConversation(conversation.sessionId);
@@ -1246,6 +1404,13 @@ export default function Home() {
         open={filterDialogOpen} 
         onOpenChange={setFilterDialogOpen}
         onSaveChanges={handleFilterSave}
+      />
+
+      {/* Candidate Detail Modal */}
+      <CandidateDetailModal
+        open={detailModalOpen}
+        onOpenChange={setDetailModalOpen}
+        candidate={selectedCandidate}
       />
     </div>
   );
