@@ -62,6 +62,31 @@ export default function Home() {
   const [savedProfiles, setSavedProfiles] = useState<Set<string>>(new Set());
   const [currentSessionJdTitle, setCurrentSessionJdTitle] = useState<string | null>(null);
 
+  // Calculate dynamic padding for JD tag
+  const getJdTagPadding = (jdTitle: string) => {
+    // Base padding for the tag container + some buffer
+    const basePadding = 16; // pl-4 = 16px
+    const tagPadding = 16; // px-2 = 8px on each side, so 16px total
+    const closeButtonWidth = 24; // X button + padding
+    const buffer = 24; // Small buffer for visual spacing
+    
+    // More accurate character width calculation
+    // Most characters are ~6-7px wide, but some are wider (W, M) and some narrower (i, l)
+    const avgCharWidth = 6.5;
+    const textWidth = jdTitle.length * avgCharWidth;
+    const totalTagWidth = textWidth + tagPadding + closeButtonWidth + buffer;
+    
+    // Cap the maximum width to prevent extremely long tags
+    const maxTagWidth = 280;
+    const actualTagWidth = Math.min(totalTagWidth, maxTagWidth);
+    
+    // Ensure minimum padding for very short titles
+    const minPadding = 80; // Minimum reasonable padding
+    
+    // Return padding in pixels
+    return Math.max(Math.ceil(actualTagWidth), minPadding);
+  };
+
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const profilesPerPage = 5;
@@ -1111,26 +1136,10 @@ export default function Home() {
             <div className="max-w-2xl mx-auto px-4 py-4">
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  {selectedJD && (
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10">
-                      <span 
-                        className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20 max-w-[200px]"
-                        title={selectedJD.name}
-                      >
-                        <span className="truncate">@{selectedJD.name}</span>
-                        <button
-                          onClick={() => setSelectedJD(null)}
-                          className="ml-1 hover:bg-primary/20 rounded-full p-0.5 flex-shrink-0"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    </div>
-                  )}
                   <Input
                     placeholder="Ask a follow-up question..."
                     disabled={isLoading}
-                    className={`h-12 text-base ${selectedJD ? 'pl-36' : 'pl-4'} pr-12 border-2 border-border focus:border-primary rounded-lg ${isLoading ? 'opacity-50' : ''}`}
+                    className="h-12 text-base pl-4 pr-12 border-2 border-border focus:border-primary rounded-lg"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -1300,7 +1309,10 @@ export default function Home() {
               {selectedJD && (
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
                   <span 
-                    className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20 max-w-[300px]"
+                    className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20"
+                    style={{
+                      maxWidth: `${Math.min(selectedJD.name.length * 6.5 + 40, 280)}px`
+                    }}
                     title={selectedJD.name}
                   >
                     <span className="truncate">@{selectedJD.name}</span>
@@ -1325,7 +1337,10 @@ export default function Home() {
                   }
                 }
               }}
-              className={`min-h-14 max-h-32 text-base ${selectedJD ? 'pl-80' : 'pl-4'} pr-24 border-2 border-border focus:border-primary rounded-lg shadow-sm resize-none bg-background/80 backdrop-blur-2xl`}
+              className={`min-h-14 max-h-32 text-base pr-24 border-2 border-border focus:border-primary rounded-lg shadow-sm resize-none bg-background/80 backdrop-blur-2xl`}
+              style={{
+                paddingLeft: selectedJD ? `${getJdTagPadding(selectedJD.name)}px` : '16px'
+              }}
               rows={1}
             />
             </div>
