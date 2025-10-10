@@ -146,48 +146,45 @@ async function ensureUserTools(apiKey: string, user: IUserDocument): Promise<str
 // --- Agent Management ---
 
 /**
- * Filter tools based on agent type
+ * Filter tools based on agent type and return single tool
  */
-function filterToolsForAgent(allToolIds: string[], agentType: 'sourcing' | 'matching' | 'profile_summary'): string[] {
+function filterToolForAgent(allToolIds: string[], agentType: 'sourcing' | 'matching' | 'profile_summary'): string {
     if (agentType === 'sourcing') {
-        return allToolIds.filter(toolId => toolId.includes('search_candidates'));
+        return allToolIds.find(toolId => toolId.includes('search_candidates')) || '';
     } else if (agentType === 'matching') {
-        return allToolIds.filter(toolId => toolId.includes('rank_candidates'));
+        return allToolIds.find(toolId => toolId.includes('rank_candidates')) || '';
     } else if (agentType === 'profile_summary') {
-        return allToolIds.filter(toolId => toolId.includes('generate_profile_summaries'));
+        return allToolIds.find(toolId => toolId.includes('generate_profile_summaries')) || '';
     }
-    return [];
+    return '';
 }
 
-
 async function createLyzrAgent(apiKey: string, agentConfig: any, allToolIds: string[]): Promise<string> {
-    // Filter tools for this specific agent
-    const createAgentToolIds = filterToolsForAgent(allToolIds, agentConfig.agentType);
+    // Filter tools for this specific agent and get single tool
+    const agentToolId = filterToolForAgent(allToolIds, agentConfig.agentType);
 
     // Create tool_configs array with specific descriptions
-    const toolConfigs = createAgentToolIds.map(toolId => {
-        return {
-            tool_name: toolId,
-            tool_source: "openapi",
-            action_names: [getToolDescription(toolId)],
-            persist_auth: false
-        };
-    });
+    const toolConfigs = agentToolId ? [{
+        tool_name: agentToolId,
+        tool_source: "openapi",
+        action_names: [getToolDescription(agentToolId)],
+        persist_auth: false
+    }] : [];
 
     // Remove agentType from payload (it's for internal use only)
     const { agentType, ...configWithoutInternal } = agentConfig;
 
     const payload = {
         ...configWithoutInternal,
-        tools: createAgentToolIds, // Use 'tools' array
+        tool: agentToolId, // Use 'tool' string for single-task agents
         tool_configs: toolConfigs,
         store_messages: true, // Enable message storage like helpdesk app
     };
 
-    console.log(`Creating ${agentType} agent with tools:`, createAgentToolIds);
+    console.log(`Creating ${agentType} single-task agent with tool:`, agentToolId);
     console.log(`Tool configs:`, toolConfigs);
 
-    const response = await fetch(`${LYZR_AGENT_BASE_URL}/v3/agents/`, {
+    const response = await fetch(`${LYZR_AGENT_BASE_URL}/v3/agents/template/single-task`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
         body: JSON.stringify(payload),
@@ -195,7 +192,7 @@ async function createLyzrAgent(apiKey: string, agentConfig: any, allToolIds: str
 
     if (!response.ok) {
         const error = await response.text();
-        throw new Error(`Failed to create Lyzr agent ${agentConfig.name}: ${error}`);
+        throw new Error(`Failed to create Lyzr single-task agent ${agentConfig.name}: ${error}`);
     }
 
     const data = await response.json();
@@ -203,33 +200,31 @@ async function createLyzrAgent(apiKey: string, agentConfig: any, allToolIds: str
 }
 
 async function updateLyzrAgent(apiKey: string, agentId: string, agentConfig: any, allToolIds: string[]): Promise<void> {
-    // Filter tools for this specific agent
-    const updateAgentToolIds = filterToolsForAgent(allToolIds, agentConfig.agentType);
+    // Filter tools for this specific agent and get single tool
+    const agentToolId = filterToolForAgent(allToolIds, agentConfig.agentType);
 
     // Create tool_configs array with specific descriptions
-    const toolConfigs = updateAgentToolIds.map(toolId => {
-        return {
-            tool_name: toolId,
-            tool_source: "openapi",
-            action_names: [getToolDescription(toolId)],
-            persist_auth: false
-        };
-    });
+    const toolConfigs = agentToolId ? [{
+        tool_name: agentToolId,
+        tool_source: "openapi",
+        action_names: [getToolDescription(agentToolId)],
+        persist_auth: false
+    }] : [];
 
     // Remove agentType from payload (it's for internal use only)
     const { agentType, ...configWithoutInternal } = agentConfig;
 
     const payload = {
         ...configWithoutInternal,
-        tools: updateAgentToolIds, // Use 'tools' array
+        tool: agentToolId, // Use 'tool' string for single-task agents
         tool_configs: toolConfigs,
         store_messages: true, // Enable message storage like helpdesk app
     };
 
-    console.log(`Updating ${agentType} agent with tools:`, updateAgentToolIds);
+    console.log(`Updating ${agentType} single-task agent with tool:`, agentToolId);
     console.log(`Tool configs:`, toolConfigs);
 
-    const response = await fetch(`${LYZR_AGENT_BASE_URL}/v3/agents/${agentId}`, {
+    const response = await fetch(`${LYZR_AGENT_BASE_URL}/v3/agents/template/single-task/${agentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
         body: JSON.stringify(payload),
@@ -237,7 +232,7 @@ async function updateLyzrAgent(apiKey: string, agentId: string, agentConfig: any
 
     if (!response.ok) {
         const error = await response.text();
-        throw new Error(`Failed to update Lyzr agent ${agentId}: ${error}`);
+        throw new Error(`Failed to update Lyzr single-task agent ${agentId}: ${error}`);
     }
 }
 
