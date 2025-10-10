@@ -16,6 +16,27 @@ import {
 
 const LYZR_AGENT_BASE_URL = 'https://agent-prod.studio.lyzr.ai';
 
+// --- Internal Tool Descriptions ---
+const TOOL_DESCRIPTIONS = {
+    search_candidates: "Use this tool when the user asks to find, search, or source candidates. Extract relevant criteria from the user's query such as job titles, skills, companies, and locations. Always call this tool when you need to find candidate profiles matching specific requirements",
+    rank_candidates: "Use this tool to rank and evaluate candidate profiles against a job description. Analyze each candidate's experience, skills, and qualifications to determine their fit for the role",
+    generate_profile_summaries: "Use this tool to generate concise, contextual summaries of candidate profiles based on user requirements. Create 1-2 sentence summaries highlighting the most relevant aspects of each candidate's profile"
+};
+
+/**
+ * Get the appropriate tool description based on tool ID
+ */
+function getToolDescription(toolId: string): string {
+    if (toolId.includes('search_candidates')) {
+        return TOOL_DESCRIPTIONS.search_candidates;
+    } else if (toolId.includes('rank_candidates')) {
+        return TOOL_DESCRIPTIONS.rank_candidates;
+    } else if (toolId.includes('generate_profile_summaries')) {
+        return TOOL_DESCRIPTIONS.generate_profile_summaries;
+    }
+    return "Use this tool as needed";
+}
+
 // --- Encryption --- (from archive)
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'default-secret-key-that-is-long-enough';
 
@@ -138,56 +159,17 @@ function filterToolsForAgent(allToolIds: string[], agentType: 'sourcing' | 'matc
     return [];
 }
 
-/**
- * Update tool_usage_description with actual tool names
- */
-function updateToolUsageDescription(description: string, toolIds: string[], agentType: 'sourcing' | 'matching' | 'profile_summary'): string {
-    let updated = description;
-    
-    if (agentType === 'sourcing') {
-        const searchTool = toolIds.find(id => id.includes('search_candidates')) || toolIds[0];
-        updated = updated.replace(/{{TOOL_SEARCH_CANDIDATES}}/g, searchTool || 'search_candidates');
-    } else if (agentType === 'matching') {
-        const rankTool = toolIds.find(id => id.includes('rank_candidates')) || toolIds[0];
-        updated = updated.replace(/{{TOOL_RANK_CANDIDATES}}/g, rankTool || 'rank_candidates');
-    } else if (agentType === 'profile_summary') {
-        const summaryTool = toolIds.find(id => id.includes('generate_profile_summaries')) || toolIds[0];
-        updated = updated.replace(/{{TOOL_GENERATE_SUMMARIES}}/g, summaryTool || 'generate_profile_summaries');
-    }
-    
-    return updated;
-}
 
 async function createLyzrAgent(apiKey: string, agentConfig: any, allToolIds: string[]): Promise<string> {
     // Filter tools for this specific agent
     const createAgentToolIds = filterToolsForAgent(allToolIds, agentConfig.agentType);
-    
-    // Update tool_usage_description with actual tool names
-    const updatedToolUsageDescription = updateToolUsageDescription(
-        agentConfig.tool_usage_description,
-        createAgentToolIds,
-        agentConfig.agentType
-    );
 
-    // Create tool_configs array with raw text descriptions
+    // Create tool_configs array with specific descriptions
     const toolConfigs = createAgentToolIds.map(toolId => {
-        // Extract raw text from tool_usage_description JSON
-        let rawDescription = updatedToolUsageDescription;
-        try {
-            const parsed = JSON.parse(updatedToolUsageDescription);
-            const toolKey = Object.keys(parsed)[0];
-            if (parsed[toolKey] && Array.isArray(parsed[toolKey]) && parsed[toolKey].length > 0) {
-                rawDescription = parsed[toolKey][0];
-            }
-        } catch (e) {
-            // If parsing fails, use the description as-is
-            console.log('Could not parse tool_usage_description, using as-is:', updatedToolUsageDescription);
-        }
-        
         return {
             tool_name: toolId,
             tool_source: "openapi",
-            action_names: [rawDescription],
+            action_names: [getToolDescription(toolId)],
             persist_auth: false
         };
     });
@@ -197,9 +179,8 @@ async function createLyzrAgent(apiKey: string, agentConfig: any, allToolIds: str
 
     const payload = {
         ...configWithoutInternal,
-        tool: createAgentToolIds[0], // Use 'tool' string with first tool
+        tools: createAgentToolIds, // Use 'tools' array
         tool_configs: toolConfigs,
-        tool_usage_description: updatedToolUsageDescription,
         store_messages: true, // Enable message storage like helpdesk app
     };
 
@@ -224,33 +205,13 @@ async function createLyzrAgent(apiKey: string, agentConfig: any, allToolIds: str
 async function updateLyzrAgent(apiKey: string, agentId: string, agentConfig: any, allToolIds: string[]): Promise<void> {
     // Filter tools for this specific agent
     const updateAgentToolIds = filterToolsForAgent(allToolIds, agentConfig.agentType);
-    
-    // Update tool_usage_description with actual tool names
-    const updatedToolUsageDescription = updateToolUsageDescription(
-        agentConfig.tool_usage_description,
-        updateAgentToolIds,
-        agentConfig.agentType
-    );
 
-    // Create tool_configs array with raw text descriptions
+    // Create tool_configs array with specific descriptions
     const toolConfigs = updateAgentToolIds.map(toolId => {
-        // Extract raw text from tool_usage_description JSON
-        let rawDescription = updatedToolUsageDescription;
-        try {
-            const parsed = JSON.parse(updatedToolUsageDescription);
-            const toolKey = Object.keys(parsed)[0];
-            if (parsed[toolKey] && Array.isArray(parsed[toolKey]) && parsed[toolKey].length > 0) {
-                rawDescription = parsed[toolKey][0];
-            }
-        } catch (e) {
-            // If parsing fails, use the description as-is
-            console.log('Could not parse tool_usage_description, using as-is:', updatedToolUsageDescription);
-        }
-        
         return {
             tool_name: toolId,
             tool_source: "openapi",
-            action_names: [rawDescription],
+            action_names: [getToolDescription(toolId)],
             persist_auth: false
         };
     });
@@ -260,9 +221,8 @@ async function updateLyzrAgent(apiKey: string, agentId: string, agentConfig: any
 
     const payload = {
         ...configWithoutInternal,
-        tool: updateAgentToolIds[0], // Use 'tool' string with first tool
+        tools: updateAgentToolIds, // Use 'tools' array
         tool_configs: toolConfigs,
-        tool_usage_description: updatedToolUsageDescription,
         store_messages: true, // Enable message storage like helpdesk app
     };
 
