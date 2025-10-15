@@ -44,9 +44,9 @@ export default function Home() {
   const [currentTextIndex, setCurrentTextIndex] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
   const [isTyping, setIsTyping] = useState(true);
-  const [selectedJD, setSelectedJD] = useState<{id: string, name: string} | null>(null);
+  const [selectedJD, setSelectedJD] = useState<{ id: string, name: string } | null>(null);
   const [jdDropdownOpen, setJdDropdownOpen] = useState(false);
-  const [availableJDs, setAvailableJDs] = useState<Array<{id: string, name: string}>>([]);
+  const [availableJDs, setAvailableJDs] = useState<Array<{ id: string, name: string }>>([]);
   const [isClient, setIsClient] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<Array<{
     sessionId: string;
@@ -69,20 +69,20 @@ export default function Home() {
     const tagPadding = 16; // px-2 = 8px on each side, so 16px total
     const closeButtonWidth = 24; // X button + padding
     const buffer = 24; // Small buffer for visual spacing
-    
+
     // More accurate character width calculation
     // Most characters are ~6-7px wide, but some are wider (W, M) and some narrower (i, l)
     const avgCharWidth = 6.5;
     const textWidth = jdTitle.length * avgCharWidth;
     const totalTagWidth = textWidth + tagPadding + closeButtonWidth + buffer;
-    
+
     // Cap the maximum width to prevent extremely long tags
     const maxTagWidth = 280;
     const actualTagWidth = Math.min(totalTagWidth, maxTagWidth);
-    
+
     // Ensure minimum padding for very short titles
     const minPadding = 80; // Minimum reasonable padding
-    
+
     // Return padding in pixels
     return Math.max(Math.ceil(actualTagWidth), minPadding);
   };
@@ -116,7 +116,7 @@ export default function Home() {
       if (response.ok) {
         const candidates = await response.json();
         console.log('[Modal] API Response:', candidates);
-        
+
         if (Array.isArray(candidates) && candidates.length > 0) {
           const fullCandidate = candidates[0];
           // Cache the result
@@ -137,7 +137,7 @@ export default function Home() {
   const openCandidateDetail = async (candidate: any) => {
     console.log('[Modal] Opening detail for candidate:', candidate);
     const publicId = candidate.public_id || candidate.id;
-    
+
     if (!publicId) {
       console.error('[Modal] No public_id found in candidate:', candidate);
       toast.error('Unable to load candidate details');
@@ -145,7 +145,7 @@ export default function Home() {
     }
 
     const fullDetails = await fetchCandidateDetails(publicId);
-    
+
     if (fullDetails) {
       console.log('[Modal] Setting selected candidate and opening modal');
       setSelectedCandidate(fullDetails);
@@ -163,12 +163,12 @@ export default function Home() {
     if (!messages.length || !messages[messages.length - 1]?.candidates) {
       return [];
     }
-    
+
     const candidates = messages[messages.length - 1].candidates;
     if (!candidates) return [];
-    
+
     const totalPages = Math.ceil((candidates?.length || 0) / profilesPerPage);
-    
+
     if (totalPages <= 5) {
       // Show all pages
       return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -194,11 +194,11 @@ export default function Home() {
       if (match.index > lastIndex) {
         parts.push(content.substring(lastIndex, match.index));
       }
-      
+
       // Add the clickable link with hover card
       const name = match[1];
       const urlOrId = match[2];
-      
+
       // Extract public_id from the URL
       let publicId = urlOrId;
       if (urlOrId.includes('linkedin.com/in/')) {
@@ -209,17 +209,17 @@ export default function Home() {
         // It's already a public_id
         publicId = urlOrId;
       }
-      
+
       // Find candidate in messageCandidates
-      const candidate = messageCandidates?.find(c => 
+      const candidate = messageCandidates?.find(c =>
         c.public_id === publicId || c.id === publicId
       );
-      
+
       // Determine if it's a full URL or just an ID
-      const finalUrl = urlOrId.startsWith('http') 
-        ? urlOrId 
+      const finalUrl = urlOrId.startsWith('http')
+        ? urlOrId
         : `https://www.linkedin.com/in/${urlOrId}`;
-      
+
       const linkElement = (
         <a
           href={finalUrl}
@@ -237,7 +237,7 @@ export default function Home() {
           {name}
         </a>
       );
-      
+
       // Wrap with hover card if we have candidate data
       if (candidate) {
         parts.push(
@@ -252,25 +252,25 @@ export default function Home() {
       } else {
         parts.push(<span key={match.index}>{linkElement}</span>);
       }
-      
+
       lastIndex = regex.lastIndex;
     }
-    
+
     // Add remaining text
     if (lastIndex < content.length) {
       parts.push(content.substring(lastIndex));
     }
-    
+
     return parts.length > 0 ? parts : content;
   };
-  
+
   const placeholderTexts = useMemo(() => [
     selectedJD ? "Find candidates who match this job description" : "Software engineers in the Bay Area with 2+ years of experience building AI Agents on Lyzr",
     selectedJD ? "Discover talent that fits your requirements perfectly" : "Data scientists in New York with 3+ years of experience in machine learning and Python",
     selectedJD ? "Source the best candidates for this role" : "Product managers in Seattle with 4+ years of experience in SaaS companies",
     selectedJD ? "Find qualified professionals for your team" : "DevOps engineers in Austin with 2+ years of experience in cloud infrastructure"
   ], [selectedJD]);
-  
+
   const handleSearch = async (queryOverride?: string) => {
     const query = queryOverride || searchQuery;
     if (!query.trim()) return;
@@ -296,7 +296,7 @@ export default function Home() {
 
     try {
       console.log('[Chat] Sending message:', enhancedQuery);
-      
+
       // Check if user is authenticated
       if (!isAuthenticated || !userId || !email) {
         throw new Error('User not authenticated');
@@ -305,7 +305,7 @@ export default function Home() {
       // Call non-streaming chat API
       const response = await fetch('/api/chat/send', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
         },
@@ -329,7 +329,7 @@ export default function Home() {
       const responseData = await response.json();
       const { response: agentResponse, sessionId } = responseData;
       console.log('[Chat] Received response, session:', sessionId);
-      
+
       // Set session ID if this is a new conversation
       if (!currentSessionId) {
         setCurrentSessionId(sessionId);
@@ -406,7 +406,7 @@ export default function Home() {
 
       setMessages(prev => [...prev, aiResponse]);
       setIsLoading(false);
-      
+
       // Scroll to bottom after adding message
       setTimeout(() => {
         const messagesContainer = document.querySelector('.overflow-y-auto');
@@ -414,14 +414,14 @@ export default function Home() {
           messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
       }, 100);
-      
+
       // Reload conversation history
       loadConversationHistory();
 
     } catch (error) {
       console.error('[Chat] Error:', error);
       toast.error('Failed to send message. Please try again.');
-      
+
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: `I'm sorry, I encountered an error. Please try again. (${error})`,
@@ -430,7 +430,7 @@ export default function Home() {
       };
       setMessages(prev => [...prev, errorMessage]);
       setIsLoading(false);
-      
+
       // Scroll to bottom after adding error message
       setTimeout(() => {
         const messagesContainer = document.querySelector('.overflow-y-auto');
@@ -498,7 +498,7 @@ export default function Home() {
 
   const handleFollowUp = async (message: string) => {
     if (!message.trim()) return;
-    
+
     // Clear search query and directly call handleSearch with the message
     setSearchQuery("");
     await handleSearch(message);
@@ -515,14 +515,14 @@ export default function Home() {
 
       if (response.ok) {
         toast.success('Conversation deleted');
-        
+
         // If we're deleting the current session, reset the UI
         if (sessionId === currentSessionId) {
           setMessages([]);
           setShowChat(false);
           setCurrentSessionId(null);
         }
-        
+
         // Reload history
         loadConversationHistory();
       } else {
@@ -605,7 +605,7 @@ export default function Home() {
     try {
       console.log(`Loading conversation: ${sessionId}`);
       setLoadingHistory(true);
-      
+
       const response = await fetch(`/api/chat/session/${sessionId}`, {
         headers: {
           'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
@@ -615,11 +615,11 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json();
         const session = data.session;
-        
+
         // Extract candidate profiles from toolResults
         const allProfiles = session.toolResults?.allProfiles || [];
         console.log(`Loading conversation with ${allProfiles.length} candidate profiles`);
-        
+
         // Convert conversation history to messages
         const loadedMessages: Message[] = session.conversationHistory.map((msg: any, index: number) => {
           const message: Message = {
@@ -628,7 +628,7 @@ export default function Home() {
             role: msg.role,
             timestamp: new Date(msg.timestamp),
           };
-          
+
           // Attach candidates to assistant messages that mention profiles
           if (msg.role === 'assistant' && allProfiles.length > 0) {
             // Check if this message contains candidate links
@@ -649,7 +649,7 @@ export default function Home() {
               }));
             }
           }
-          
+
           return message;
         });
 
@@ -680,9 +680,9 @@ export default function Home() {
   // Typing animation effect - only on client
   useEffect(() => {
     if (!isClient || searchQuery.trim()) return; // Don't animate if user has typed something
-    
+
     const currentText = placeholderTexts[currentTextIndex];
-    
+
     if (isTyping) {
       if (charIndex < currentText.length) {
         const timer = setTimeout(() => {
@@ -762,7 +762,7 @@ export default function Home() {
                       onSelect={(e) => e.preventDefault()}
                       disabled={loadingHistory}
                     >
-                      <div 
+                      <div
                         className="flex-1 flex flex-col items-start gap-1 min-w-0"
                         onClick={() => !loadingHistory && loadConversation(conversation.sessionId)}
                       >
@@ -834,7 +834,7 @@ export default function Home() {
                   </div>
                 </div>
               )}
-              
+
               {messages.map((message) => (
                 <div
                   key={message.id}
@@ -846,11 +846,10 @@ export default function Home() {
                     </div>
                   )}
                   <div
-                    className={`max-w-[70%] rounded-2xl px-4 py-3 ${
-                      message.role === 'user'
+                    className={`max-w-[70%] rounded-2xl px-4 py-3 ${message.role === 'user'
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted/60 border border-border/30 backdrop-blur-sm'
-                    }`}
+                      }`}
                   >
                     <div className={`text-sm leading-relaxed whitespace-pre-wrap ${message.role === 'user' ? 'text-primary-foreground' : 'text-foreground'}`}>
                       {message.role === 'assistant' ? renderMessageContent(message.content, message.candidates) : message.content}
@@ -859,16 +858,16 @@ export default function Home() {
                       <div className="mt-4 space-y-4">
                         <h4 className="font-semibold text-primary mb-3">Top Recommendations</h4>
                         {message.candidates.slice(0, 3).map((candidate) => (
-                            <div 
-                              key={candidate.id} 
-                              className="border rounded-lg p-4 bg-card/50 hover:bg-card transition-colors cursor-pointer"
-                              onClick={() => openCandidateDetail(candidate)}
-                            >
+                          <div
+                            key={candidate.id}
+                            className="border rounded-lg p-4 bg-card/50 hover:bg-card transition-colors cursor-pointer"
+                            onClick={() => openCandidateDetail(candidate)}
+                          >
                             <div className="flex items-start space-x-3">
                               {/* Profile picture removed - LinkedIn API returns empty strings */}
                               <div className="flex-1">
                                 <div className="flex items-center space-x-2 mb-1">
-                                  <a 
+                                  <a
                                     href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
@@ -876,55 +875,55 @@ export default function Home() {
                                   >
                                     {candidate.name}
                                   </a>
-                                  <a 
+                                  <a
                                     href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="hover:opacity-80 transition-opacity"
                                   >
-                          <Image 
-                            src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/LinkedIn_icon.svg/1024px-LinkedIn_icon.svg.png" 
-                            alt="LinkedIn" 
+                                    <Image
+                                      src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/LinkedIn_icon.svg/1024px-LinkedIn_icon.svg.png"
+                                      alt="LinkedIn"
                                       width={16}
                                       height={16}
-                          />
-                        </a>
-                    </div>
-                    <div className="flex items-center space-x-2 mb-1">
+                                    />
+                                  </a>
+                                </div>
+                                <div className="flex items-center space-x-2 mb-1">
                                   {candidate.companyLogo && (
-                        <Image
-                          src={candidate.companyLogo}
-                          alt={candidate.company}
-                          width={16}
-                          height={16}
-                          className="w-4 h-4 object-contain"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                          }}
-                        />
+                                    <Image
+                                      src={candidate.companyLogo}
+                                      alt={candidate.company}
+                                      width={16}
+                                      height={16}
+                                      className="w-4 h-4 object-contain"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                      }}
+                                    />
                                   )}
                                   <p className="text-sm text-foreground font-medium">{candidate.title}</p>
-                    </div>
-                    <div className="flex items-center space-x-2 mb-1">
+                                </div>
+                                <div className="flex items-center space-x-2 mb-1">
                                   <MapPin className="w-4 h-4 text-muted-foreground" />
                                   <p className="text-sm text-muted-foreground">{candidate.location}</p>
-                    </div>
-                    {candidate.education && (
-                      <div className="flex items-center space-x-2 mb-2">
+                                </div>
+                                {candidate.education && (
+                                  <div className="flex items-center space-x-2 mb-2">
                                     <School className="w-4 h-4 text-muted-foreground" />
                                     <p className="text-sm text-muted-foreground">{candidate.education}</p>
-                      </div>
-                    )}
-                    <div className="mt-2">
-                      <div className="flex items-start space-x-2">
+                                  </div>
+                                )}
+                                <div className="mt-2">
+                                  <div className="flex items-start space-x-2">
                                     <Sparkles className="min-h-4 min-w-4 text-primary mt-0.5" />
                                     <p className="text-sm text-muted-foreground italic line-clamp-8">{candidate.summary}</p>
                                   </div>
                                 </div>
                               </div>
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant={savedProfiles.has(candidate.public_id) ? "default" : "outline"}
                                 className={`flex-shrink-0 ${savedProfiles.has(candidate.public_id) ? 'text-white' : 'text-primary border-primary hover:bg-primary/5'}`}
                                 onClick={() => handleToggleSave(candidate.public_id)}
@@ -1010,94 +1009,93 @@ export default function Home() {
                               const paginatedCandidates = message.candidates.slice(startIndex, endIndex);
 
                               return paginatedCandidates.map((candidate) => (
-                              <div 
-                                key={candidate.id} 
-                                className="flex items-start space-x-3 p-4 border rounded-lg bg-card hover:bg-card/80 transition-colors cursor-pointer"
-                                onClick={(e) => {
-                                  // Don't trigger if clicking the save button
-                                  if ((e.target as HTMLElement).closest('button')) return;
-                                  openCandidateDetail(candidate);
-                                }}
-                              >
-                                {/* Company Logo */}
-                                <div className="flex-shrink-0 mt-1">
-                                  {candidate.companyLogo ? (
-                                    <Image
-                                      src={candidate.companyLogo}
-                                      alt={candidate.company}
-                                      width={24}
-                                      height={24}
-                                      className="w-6 h-6 object-contain rounded"
-                                      onError={(e) => {
-                                        const target = e.target as HTMLImageElement;
-                                        target.style.display = 'none';
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="w-6 h-6 bg-muted rounded flex items-center justify-center">
-                                      <span className="text-xs text-muted-foreground font-medium">
-                                        {candidate.company?.charAt(0) || '?'}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center space-x-2 mb-1">
-                                    <a 
-                                      href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="font-semibold text-primary hover:text-primary/80 hover:underline truncate"
-                                    >
-                                      {candidate.name}
-                                    </a>
-                                    <a 
-                                      href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="hover:opacity-80 transition-opacity flex-shrink-0"
-                                    >
-                                      <Image
-                                        src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/LinkedIn_icon.svg/1024px-LinkedIn_icon.svg.png"
-                                        alt="LinkedIn"
-                                        width={14}
-                                        height={14}
-                                      />
-                                    </a>
-                                  </div>
-                                  <p className="text-sm text-foreground font-medium truncate mb-1">{candidate.title}</p>
-                                  <p className="text-sm text-muted-foreground truncate mb-2">{candidate.company}</p>
-                                  {candidate.summary && (
-                                    <p className="text-xs text-muted-foreground line-clamp-1">
-                                      {candidate.summary.length > 100 
-                                        ? `${candidate.summary.substring(0, 100)}...` 
-                                        : candidate.summary}
-                                    </p>
-                                  )}
-                                </div>
-                                
-                                <Button
-                                  size="sm"
-                                  variant={savedProfiles.has(candidate.public_id) ? "default" : "outline"}
-                                  className={`flex-shrink-0 ${savedProfiles.has(candidate.public_id) ? 'text-white' : 'text-primary border-primary hover:bg-primary/5'}`}
-                                  onClick={() => handleToggleSave(candidate.public_id)}
+                                <div
+                                  key={candidate.id}
+                                  className="flex items-start space-x-3 p-4 border rounded-lg bg-card hover:bg-card/80 transition-colors cursor-pointer"
+                                  onClick={(e) => {
+                                    // Don't trigger if clicking the save button
+                                    if ((e.target as HTMLElement).closest('button')) return;
+                                    openCandidateDetail(candidate);
+                                  }}
                                 >
-                                  <Bookmark className={`w-4 h-4 mr-1 ${savedProfiles.has(candidate.public_id) ? 'fill-white' : ''}`} />
-                                  {savedProfiles.has(candidate.public_id) ? "Saved" : "Save"}
-                                </Button>
-                              </div>
+                                  {/* Company Logo */}
+                                  <div className="flex-shrink-0 mt-1">
+                                    {candidate.companyLogo ? (
+                                      <Image
+                                        src={candidate.companyLogo}
+                                        alt={candidate.company}
+                                        width={24}
+                                        height={24}
+                                        className="w-6 h-6 object-contain rounded"
+                                        onError={(e) => {
+                                          const target = e.target as HTMLImageElement;
+                                          target.style.display = 'none';
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="w-6 h-6 bg-muted rounded flex items-center justify-center">
+                                        <span className="text-xs text-muted-foreground font-medium">
+                                          {candidate.company?.charAt(0) || '?'}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <a
+                                        href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="font-semibold text-primary hover:text-primary/80 hover:underline truncate"
+                                      >
+                                        {candidate.name}
+                                      </a>
+                                      <a
+                                        href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="hover:opacity-80 transition-opacity flex-shrink-0"
+                                      >
+                                        <Image
+                                          src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/LinkedIn_icon.svg/1024px-LinkedIn_icon.svg.png"
+                                          alt="LinkedIn"
+                                          width={14}
+                                          height={14}
+                                        />
+                                      </a>
+                                    </div>
+                                    <p className="text-sm text-foreground font-medium truncate mb-1">{candidate.title}</p>
+                                    <p className="text-sm text-muted-foreground truncate mb-2">{candidate.company}</p>
+                                    {candidate.summary && (
+                                      <p className="text-xs text-muted-foreground line-clamp-1">
+                                        {candidate.summary.length > 100
+                                          ? `${candidate.summary.substring(0, 100)}...`
+                                          : candidate.summary}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <Button
+                                    size="sm"
+                                    variant={savedProfiles.has(candidate.public_id) ? "default" : "outline"}
+                                    className={`flex-shrink-0 ${savedProfiles.has(candidate.public_id) ? 'text-white' : 'text-primary border-primary hover:bg-primary/5'}`}
+                                    onClick={() => handleToggleSave(candidate.public_id)}
+                                  >
+                                    <Bookmark className={`w-4 h-4 mr-1 ${savedProfiles.has(candidate.public_id) ? 'fill-white' : ''}`} />
+                                    {savedProfiles.has(candidate.public_id) ? "Saved" : "Save"}
+                                  </Button>
+                                </div>
                               ));
                             })()}
-                        </div>
+                          </div>
                         </div>
                       </div>
                     )}
-                    <p className={`text-xs mt-2 ${
-                      message.role === 'user'
+                    <p className={`text-xs mt-2 ${message.role === 'user'
                         ? 'opacity-60 text-primary-foreground/60'
                         : 'text-muted-foreground'
-                    }`}>
+                      }`}>
                       {message.timestamp.toLocaleTimeString()}
                     </p>
                   </div>
@@ -1171,8 +1169,8 @@ export default function Home() {
         </div>
 
         {/* Filter Dialog */}
-        <FilterDialog 
-          open={filterDialogOpen} 
+        <FilterDialog
+          open={filterDialogOpen}
           onOpenChange={setFilterDialogOpen}
           onSaveChanges={() => setFilterDialogOpen(false)}
         />
@@ -1186,7 +1184,7 @@ export default function Home() {
       </div>
     );
   }
-  
+
   return (
     <div className="h-[calc(100vh-100px)] bg-background animate-fade-in flex flex-col relative overflow-hidden">
       {/* Subtle Animated Grid Background */}
@@ -1215,7 +1213,7 @@ export default function Home() {
                     onSelect={(e) => e.preventDefault()}
                     disabled={loadingHistory}
                   >
-                    <div 
+                    <div
                       className="flex-1 flex flex-col items-start gap-1 min-w-0"
                       onClick={() => !loadingHistory && loadConversation(conversation.sessionId)}
                     >
@@ -1280,9 +1278,9 @@ export default function Home() {
         <div className="text-center mb-6 animate-fade-in-up">
           <div className="flex items-center justify-center mb-4">
             <div className="w-20 h-16 flex items-center justify-center">
-              <Image 
-                src="https://i0.wp.com/www.lyzr.ai/wp-content/uploads/2024/11/cropped_lyzr_logo_1.webp?fit=452%2C180&ssl=1" 
-                alt="Lyzr Logo" 
+              <Image
+                src="https://i0.wp.com/www.lyzr.ai/wp-content/uploads/2024/11/cropped_lyzr_logo_1.webp?fit=452%2C180&ssl=1"
+                alt="Lyzr Logo"
                 width={80}
                 height={48}
                 className="h-12 w-auto object-contain dark:invert"
@@ -1293,7 +1291,7 @@ export default function Home() {
             Lyzr HR Candidate Sourcing Agent
           </h1>
           <p className="text-muted-foreground text-lg">
-            Find exactly who you&apos;re looking for, in seconds. 
+            Find exactly who you&apos;re looking for, in seconds.
             <span className="text-primary cursor-pointer hover:underline ml-1">
               See how it works.
             </span>
@@ -1308,7 +1306,7 @@ export default function Home() {
             <div className="relative">
               {selectedJD && (
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
-                  <span 
+                  <span
                     className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20"
                     style={{
                       maxWidth: `${Math.min(selectedJD.name.length * 6.5 + 40, 280)}px`
@@ -1325,27 +1323,27 @@ export default function Home() {
                   </span>
                 </div>
               )}
-            <Textarea
-              placeholder={searchQuery.trim() ? "" : (isClient ? placeholderText : "Search for candidates...")}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  if (searchQuery.trim()) {
-                    handleSearch();
+              <Textarea
+                placeholder={searchQuery.trim() ? "" : (isClient ? placeholderText : "Search for candidates...")}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (searchQuery.trim()) {
+                      handleSearch();
+                    }
                   }
-                }
-              }}
-              className={`min-h-14 max-h-32 text-base pr-24 border-2 border-border focus:border-primary rounded-lg shadow-sm resize-none bg-background/80 backdrop-blur-2xl`}
-              style={{
-                paddingLeft: selectedJD ? `${getJdTagPadding(selectedJD.name)}px` : '16px'
-              }}
-              rows={1}
-            />
+                }}
+                className={`min-h-14 max-h-32 text-base pr-24 border-2 border-border focus:border-primary rounded-lg shadow-sm resize-none bg-background/80 backdrop-blur-2xl`}
+                style={{
+                  paddingLeft: selectedJD ? `${getJdTagPadding(selectedJD.name)}px` : '16px'
+                }}
+                rows={1}
+              />
             </div>
             <div className="absolute right-2 top-2">
-              <Button 
+              <Button
                 className="h-10 px-6"
                 disabled={!searchQuery.trim()}
                 onClick={() => handleSearch()}
@@ -1354,11 +1352,11 @@ export default function Home() {
               </Button>
             </div>
           </div>
-          
+
           {/* Select JD Button */}
           <div className="flex justify-end">
             <div className="relative">
-              <Button 
+              <Button
                 variant="outline"
                 onClick={() => setJdDropdownOpen(!jdDropdownOpen)}
                 className="flex items-center space-x-2"
@@ -1372,9 +1370,9 @@ export default function Home() {
                     {availableJDs.length === 0 ? (
                       <>
                         <div className="text-sm text-muted-foreground p-2">No JDs uploaded yet</div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="w-full justify-start text-primary"
                           onClick={() => window.location.href = '/jd-library'}
                         >
@@ -1390,7 +1388,7 @@ export default function Home() {
                             size="sm"
                             className="w-full justify-start truncate max-w-full"
                             onClick={() => {
-                              setSelectedJD({id: jd.id, name: jd.name});
+                              setSelectedJD({ id: jd.id, name: jd.name });
                               setJdDropdownOpen(false);
                             }}
                           >
@@ -1398,9 +1396,9 @@ export default function Home() {
                           </Button>
                         ))}
                         <hr className="my-1" />
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="w-full justify-start text-primary"
                           onClick={() => window.location.href = '/jd-library'}
                         >
@@ -1446,8 +1444,8 @@ export default function Home() {
       </div>
 
       {/* Filter Dialog */}
-      <FilterDialog 
-        open={filterDialogOpen} 
+      <FilterDialog
+        open={filterDialogOpen}
         onOpenChange={setFilterDialogOpen}
         onSaveChanges={handleFilterSave}
       />

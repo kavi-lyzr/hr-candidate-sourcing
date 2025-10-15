@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import Cookies from 'js-cookie';
 
 export interface TokenData {
@@ -40,8 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [token, setToken] = useState<string | null>(null);
     const [email, setEmail] = useState<string | null>(null);
     const [displayName, setDisplayName] = useState<string | null>(null);
+    
+    // Use refs to track auth API call state and prevent duplicate calls
+    const authCallInProgress = useRef(false);
+    const lastSuccessfulAuthCall = useRef<string | null>(null);
 
-    const clearAuthData = () => {
+    const clearAuthData = useCallback(() => {
         Cookies.remove('user_id');
         Cookies.remove('token');
         setIsAuthenticated(false);
@@ -50,9 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setEmail(null);
         setDisplayName(null);
         setIsLoading(false);
-    };
+        // Reset auth tracking refs
+        authCallInProgress.current = false;
+        lastSuccessfulAuthCall.current = null;
+    }, []);
     
-    const setAuthData = (tokenData: TokenData, userEmail: string | null, userName: string | null) => {
+    const setAuthData = useCallback((tokenData: TokenData, userEmail: string | null, userName: string | null) => {
         setIsAuthenticated(true);
         setUserId(tokenData.user_id);
         setToken(tokenData.api_key);
@@ -60,20 +67,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setDisplayName(userName);
         Cookies.set('user_id', tokenData.user_id, { expires: 7 });
         Cookies.set('token', tokenData.api_key, { expires: 7 });
-    };
+    }, []);
 
-    const checkAuth = async () => {
+    const checkAuth = useCallback(async () => {
         if (typeof window === 'undefined') {
             setIsLoading(false);
             return;
         }
         
+        // Prevent duplicate calls - if already in progress, skip
+        if (authCallInProgress.current) {
+            console.log('Auth check already in progress, skipping duplicate call');
+            return;
+        }
+        
         setIsLoading(true);
+        authCallInProgress.current = true;
+        
         try {
             const { default: lyzr } = await import('lyzr-agent');
             const tokenData = await lyzr.getKeys() as unknown as TokenData[];
 
             if (tokenData && tokenData[0]) {
+                const currentUserId = tokenData[0].user_id;
+                
+                // Check if we already successfully synced this user recently
+                if (lastSuccessfulAuthCall.current === currentUserId) {
+                    console.log('User already synced with backend, skipping duplicate API call');
+                    
+                    // Just update local state without calling backend
+                    let userEmail: string | null = null;
+                    let userName: string | null = null;
+
+                    try {
+                        const userKeys = await lyzr.getKeysUser();
+                        userEmail = userKeys?.data?.user?.email;
+                        userName = userKeys?.data?.user?.name;
+                    } catch (error) {
+                        console.error("Error fetching user keys, proceeding with token data only.", error);
+                    }
+
+                    const nameFromEmail = userEmail ? userEmail.split('@')[0].charAt(0).toUpperCase() + userEmail.split('@')[0].slice(1) : 'User';
+                    const finalUserName = userName || nameFromEmail;
+                    
+                    setAuthData(tokenData[0], userEmail, finalUserName);
+                    return;
+                }
+                
                 let userEmail: string | null = null;
                 let userName: string | null = null;
 
@@ -88,7 +128,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 const nameFromEmail = userEmail ? userEmail.split('@')[0].charAt(0).toUpperCase() + userEmail.split('@')[0].slice(1) : 'User';
                 const finalUserName = userName || nameFromEmail;
 
-                // Sync with backend
+                // Sync with backend - only once per user session
+                console.log('Syncing user with backend...');
                 await fetch('/api/auth', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -101,6 +142,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         lyzrApiKey: tokenData[0].api_key,
                     }),
                 });
+                
+                // Mark this user as successfully synced
+                lastSuccessfulAuthCall.current = currentUserId;
+                console.log('✓ User successfully synced with backend');
 
                 setAuthData(tokenData[0], userEmail, finalUserName);
 
@@ -112,8 +157,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             clearAuthData();
         } finally {
             setIsLoading(false);
+            authCallInProgress.current = false;
         }
-    };
+    }, [clearAuthData, setAuthData]); // Add dependencies
 
     const login = async () => {
         if (typeof window === 'undefined') return;
@@ -167,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     } else {
                         setIsLoading(false);
                     }
-                } catch (error) {
+                } catch {
                     setIsLoading(false); // Not logged in
                 }
                 
@@ -178,7 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         };
         init();
-    }, []);
+    }, [checkAuth, clearAuthData]);
 
     return (
         <AuthContext.Provider value={{ isAuthenticated, isLoading, userId, token, email, displayName, login, logout }}>
