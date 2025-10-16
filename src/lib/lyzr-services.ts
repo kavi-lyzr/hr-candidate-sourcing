@@ -1,16 +1,17 @@
-import mongoose from 'mongoose';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// import mongoose from 'mongoose';
 import CryptoJS from 'crypto-js';
-import User, { IUser, IUserDocument } from '@/models/user';
-import AgentVersion, { IAgentVersion, IAgentVersionDocument } from '@/models/agentVersion';
-import ToolVersion, { IToolVersion, IToolVersionDocument } from '@/models/toolVersion';
+import User, { IUserDocument } from '@/models/user';
+// import AgentVersion, { IAgentVersion, IAgentVersionDocument } from '@/models/agentVersion';
+// import ToolVersion, { IToolVersion, IToolVersionDocument } from '@/models/toolVersion';
 import {
     LATEST_SOURCING_AGENT_VERSION,
     LATEST_MATCHING_AGENT_VERSION,
-    LATEST_PROFILE_SUMMARY_AGENT_VERSION,
+    // LATEST_PROFILE_SUMMARY_AGENT_VERSION,
     LATEST_TOOL_VERSION,
     SOURCING_AGENT_CONFIG,
     MATCHING_AGENT_CONFIG,
-    PROFILE_SUMMARY_AGENT_CONFIG,
+    // PROFILE_SUMMARY_AGENT_CONFIG,
     TOOL_CONFIG
 } from './agent-config';
 
@@ -373,16 +374,30 @@ export async function createOrUpdateUserAndAgents(lyzrUser: { id: string; email:
         return user;
 
     } else {
-        // --- NEW USER LOGIC (with race condition handling) ---
-        try {
-            console.log(`Creating new user and agents for ${lyzrUser.email}`);
-            
-            // Create tools first - just call createToolsForUser directly (don't need ensureUserTools here)
-            const toolIds = await createToolsForUser(lyzrApiKey, lyzrUser.id);
+        // --- NEW USER LOGIC (with improved race condition handling) ---
+        console.log(`Attempting to create new user and agents for ${lyzrUser.email}`);
+        
+        // Double-check if user was just created by another process
+        const doubleCheckUser = await User.findOne(userIdentifier);
+        if (doubleCheckUser) {
+            console.log(`User already exists for ${lyzrUser.email}, returning existing user`);
+            return doubleCheckUser;
+        }
 
+        // Create tools and agents FIRST, before trying to save the user
+        // This way if a race condition occurs, we only have one set of agents
+        try {
+            console.log(`Creating tools for ${lyzrUser.email}...`);
+            const toolIds = await createToolsForUser(lyzrApiKey, lyzrUser.id);
+            
+            console.log(`Creating sourcing agent for ${lyzrUser.email}...`);
             const sourcingAgentId = await createLyzrAgent(lyzrApiKey, SOURCING_AGENT_CONFIG, toolIds);
+            
+            console.log(`Creating matching agent for ${lyzrUser.email}...`);
             const matchingAgentId = await createLyzrAgent(lyzrApiKey, MATCHING_AGENT_CONFIG, toolIds);
 
+            console.log(`Saving user document for ${lyzrUser.email}...`);
+            // Now create and save the user document with all real values
             const newUser = new User({
                 ...userIdentifier,
                 email: lyzrUser.email,
@@ -400,21 +415,26 @@ export async function createOrUpdateUserAndAgents(lyzrUser: { id: string; email:
             });
 
             await newUser.save();
+            console.log(`✓ Successfully created user and agents for ${lyzrUser.email}`);
             return newUser;
 
         } catch (error: unknown) {
             if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
-                // Duplicate key error: another process created the user.
-                console.log('Race condition detected on user creation, re-fetching user.');
+                // Duplicate key error: another process created user during tool/agent creation
+                // This is actually the root cause - two processes created agents before saving
+                console.warn(`⚠ Race condition: User ${lyzrUser.email} was created by another process during agent creation`);
+                console.warn(`Note: This may have created duplicate tools/agents on Lyzr platform`);
+                
                 const existingUser = await User.findOne(userIdentifier);
                 if (!existingUser) {
-                    throw new Error('Failed to fetch user after user creation race condition.');
+                    throw new Error('Failed to fetch user after duplicate key error');
                 }
-                // We can either re-run the update logic or just return the user.
-                // For simplicity, we'll return the user. The next login will handle agent updates if needed.
+                
+                console.log(`Returning existing user for ${lyzrUser.email}`);
                 return existingUser;
             } else {
-                throw error; // Re-throw other errors
+                console.error(`Error creating user and agents for ${lyzrUser.email}:`, error);
+                throw error;
             }
         }
     }

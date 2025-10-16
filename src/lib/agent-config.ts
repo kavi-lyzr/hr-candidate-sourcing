@@ -77,7 +77,7 @@ The tool accepts these parameters:
         {
             type: "MEMORY",
             config: {
-                max_messages_context_count: 10
+                max_messages_context_count: 50
             },
             priority: 0
         }
@@ -127,7 +127,7 @@ You must ALWAYS return output in structured output, in the response_format that 
         {
             type: "MEMORY",
             config: {
-                max_messages_context_count: 10
+                max_messages_context_count: 50
             },
             priority: 0
         }
@@ -141,7 +141,7 @@ You must ALWAYS return output in structured output, in the response_format that 
         type: "json_schema",
         json_schema: {
             name: "candidate_ranking",
-            strict: false,
+            strict: true,
             schema: {
                 type: "object",
                 properties: {
@@ -153,23 +153,19 @@ You must ALWAYS return output in structured output, in the response_format that 
                             properties: {
                                 rank: {
                                     type: "integer",
-                                    description: "Ranking position (1 = best fit, 2 = second best, etc.)"
+                                    description: "Ranking position (1 = best fit, 2 = second best, etc.)",
+                                    minimum: 1
                                 },
                                 candidate_id: {
                                     type: "string",
-                                    description: "MongoDB ObjectId of the candidate profile"
+                                    description: "MongoDB ObjectId of the candidate profile (24 hex characters)",
+                                    pattern: "^[a-fA-F0-9]{24}$"
                                 },
-                                // public_id: {
-                                //     type: "string",
-                                //     description: "Public ID of the candidate (e.g., elizabeth-waller-11b53121)"
-                                // },
-                                // full_name: {
-                                //     type: "string",
-                                //     description: "Full name of the candidate"
-                                // },
                                 match_score: {
                                     type: "number",
-                                    description: "Match score from 0-100 (100 = perfect match)"
+                                    description: "Match score from 0-100 (100 = perfect match)",
+                                    minimum: 0,
+                                    maximum: 100
                                 },
                                 summary: {
                                     type: "string",
@@ -177,45 +173,34 @@ You must ALWAYS return output in structured output, in the response_format that 
                                 },
                                 key_strengths: {
                                     type: "array",
-                                    items: { type: "string" },
                                     description: "Array of key strengths that make this candidate suitable for the role",
+                                    items: {
+                                        type: "string",
+                                        description: "A single key strength"
+                                    },
                                     minItems: 0
                                 },
                                 potential_concerns: {
                                     type: "array",
-                                    items: { type: "string" },
                                     description: "Array of potential concerns or gaps in the candidate's profile",
+                                    items: {
+                                        type: "string",
+                                        description: "A single potential concern"
+                                    },
                                     minItems: 0
                                 }
                             },
-                            required: ["rank", "candidate_id", "match_score", "summary"],
+                            required: [
+                                "rank",
+                                "candidate_id",
+                                "match_score",
+                                "summary",
+                                "key_strengths",
+                                "potential_concerns"
+                            ],
                             additionalProperties: false
                         }
-                    },
-                    // overall_analysis: {
-                    //     type: "object",
-                    //     properties: {
-                    //         total_candidates: {
-                    //             type: "integer",
-                    //             description: "Total number of candidates analyzed"
-                    //         },
-                    //         top_tier_count: {
-                    //             type: "integer",
-                    //             description: "Number of candidates in top tier (score 80+)"
-                    //         },
-                    //         general_observations: {
-                    //             type: "string",
-                    //             description: "General observations about the candidate pool and their fit for the role"
-                    //         },
-                    //         recommended_next_steps: {
-                    //             type: "array",
-                    //             items: { type: "string" },
-                    //             description: "Recommended next steps for the hiring process"
-                    //         }
-                    //     },
-                    //     required: ["total_candidates", "top_tier_count", "general_observations", "recommended_next_steps"],
-                    //     additionalProperties: false
-                    // }
+                    }
                 },
                 required: ["ranked_candidates"],
                 additionalProperties: false
