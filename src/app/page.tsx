@@ -906,7 +906,7 @@ export default function Home() {
         <div className="relative z-10 flex flex-col h-[calc(100vh-100px)] overflow-hidden">
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto pt-16 pb-16">
-            <div className="max-w-4xl mx-auto px-4 space-y-6">
+            <div className="w-full mx-auto px-4 space-y-6">
               {/* JD Attachment Indicator */}
               {currentSessionJdTitle && messages.length > 0 && (
                 <div className="flex justify-center mb-4">
