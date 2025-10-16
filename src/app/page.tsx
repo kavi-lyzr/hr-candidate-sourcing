@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
@@ -271,6 +272,70 @@ export default function Home() {
     selectedJD ? "Find qualified professionals for your team" : "DevOps engineers in Austin with 2+ years of experience in cloud infrastructure"
   ], [selectedJD]);
 
+  // Function to rank candidates based on profile quality and completeness
+  const rankCandidates = (candidates: Message['candidates'], messageContent?: string) => {
+    if (!candidates) return [];
+    
+    return [...candidates].sort((a, b) => {
+      let scoreA = 0;
+      let scoreB = 0;
+
+      // HIGHEST PRIORITY: Check if the agent mentioned this candidate in the message
+      // This indicates the agent found them particularly relevant
+      if (messageContent) {
+        const mentionsA = messageContent.includes(a.name) || messageContent.includes(a.public_id);
+        const mentionsB = messageContent.includes(b.name) || messageContent.includes(b.public_id);
+        
+        // Get position in message (earlier = more important)
+        const posA = mentionsA ? messageContent.indexOf(a.name) : Infinity;
+        const posB = mentionsB ? messageContent.indexOf(b.name) : Infinity;
+        
+        if (mentionsA && !mentionsB) return -1; // A mentioned, B not = A wins
+        if (!mentionsA && mentionsB) return 1;  // B mentioned, A not = B wins
+        if (mentionsA && mentionsB) {
+          // Both mentioned, earlier in message is better
+          scoreA += 50 - (posA / messageContent.length) * 20; // Up to 50 points
+          scoreB += 50 - (posB / messageContent.length) * 20;
+        }
+      }
+
+      // Score based on profile completeness (more complete = better)
+      if (a.summary && a.summary.length > 100) scoreA += 15;
+      else if (a.summary && a.summary.length > 50) scoreA += 10;
+      
+      if (b.summary && b.summary.length > 100) scoreB += 15;
+      else if (b.summary && b.summary.length > 50) scoreB += 10;
+
+      // Score based on having education
+      if (a.education) scoreA += 8;
+      if (b.education) scoreB += 8;
+
+      // Score based on having company logo (indicates verified/established company)
+      if (a.companyLogo) scoreA += 5;
+      if (b.companyLogo) scoreB += 5;
+
+      // Score based on title specificity (longer, more detailed titles)
+      if (a.title && a.title.length > 20) scoreA += 4;
+      else if (a.title && a.title.length > 10) scoreA += 2;
+      
+      if (b.title && b.title.length > 20) scoreB += 4;
+      else if (b.title && b.title.length > 10) scoreB += 2;
+
+      // Score based on location specificity
+      if (a.location && a.location.length > 10) scoreA += 2;
+      else if (a.location && a.location.length > 5) scoreA += 1;
+      
+      if (b.location && b.location.length > 10) scoreB += 2;
+      else if (b.location && b.location.length > 5) scoreB += 1;
+
+      // Score based on company name presence
+      if (a.company && a.company.length > 5) scoreA += 3;
+      if (b.company && b.company.length > 5) scoreB += 3;
+
+      return scoreB - scoreA; // Higher score first
+    });
+  };
+
   const handleSearch = async (queryOverride?: string) => {
     const query = queryOverride || searchQuery;
     if (!query.trim()) return;
@@ -443,7 +508,12 @@ export default function Home() {
     setSearchQuery("");
   };
 
-  const handleToggleSave = async (candidatePublicId: string) => {
+  const handleToggleSave = async (candidatePublicId: string, event?: React.MouseEvent) => {
+    // Prevent event bubbling to parent container
+    if (event) {
+      event.stopPropagation();
+    }
+
     if (!currentSessionId) {
       toast.error("Cannot save profile without an active session.");
       return;
@@ -598,6 +668,7 @@ export default function Home() {
     setIsLoading(false);
     setCurrentSessionId(null);
     setCurrentSessionJdTitle(null);
+    setSelectedJD(null); // Clear the JD selection
     setCurrentPage(1); // Reset pagination
   };
 
@@ -656,6 +727,17 @@ export default function Home() {
         setMessages(loadedMessages);
         setCurrentSessionId(sessionId);
         setCurrentSessionJdTitle(session.attachedJdTitle || null);
+        
+        // Set the selectedJD state to display the JD tag
+        if (session.attachedJd && session.attachedJdTitle) {
+          setSelectedJD({
+            id: session.attachedJd,
+            name: session.attachedJdTitle
+          });
+        } else {
+          setSelectedJD(null);
+        }
+        
         setShowChat(true);
         setCurrentPage(1); // Reset pagination for new conversation
 
@@ -823,7 +905,7 @@ export default function Home() {
         {/* Chat Interface */}
         <div className="relative z-10 flex flex-col h-[calc(100vh-100px)] overflow-hidden">
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto pt-32 pb-32">
+          <div className="flex-1 overflow-y-auto pt-16 pb-16">
             <div className="max-w-4xl mx-auto px-4 space-y-6">
               {/* JD Attachment Indicator */}
               {currentSessionJdTitle && messages.length > 0 && (
@@ -857,7 +939,7 @@ export default function Home() {
                     {message.candidates && (
                       <div className="mt-4 space-y-4">
                         <h4 className="font-semibold text-primary mb-3">Top Recommendations</h4>
-                        {message.candidates.slice(0, 3).map((candidate) => (
+                        {rankCandidates(message.candidates, message.content).slice(0, 3).map((candidate) => (
                           <div
                             key={candidate.id}
                             className="border rounded-lg p-4 bg-card/50 hover:bg-card transition-colors cursor-pointer"
@@ -926,7 +1008,7 @@ export default function Home() {
                                 size="sm"
                                 variant={savedProfiles.has(candidate.public_id) ? "default" : "outline"}
                                 className={`flex-shrink-0 ${savedProfiles.has(candidate.public_id) ? 'text-white' : 'text-primary border-primary hover:bg-primary/5'}`}
-                                onClick={() => handleToggleSave(candidate.public_id)}
+                                onClick={(e) => handleToggleSave(candidate.public_id, e)}
                               >
                                 <Bookmark className={`w-4 h-4 mr-1 ${savedProfiles.has(candidate.public_id) ? 'fill-white' : ''}`} />
                                 {savedProfiles.has(candidate.public_id) ? "Saved" : "Save"}
@@ -947,7 +1029,7 @@ export default function Home() {
                                   </>
                                 )}
                               </div>
-                              <Button
+                              {/* <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={() => setFilterDialogOpen(true)}
@@ -955,7 +1037,7 @@ export default function Home() {
                               >
                                 <Settings className="w-4 h-4 mr-1" />
                                 Edit Filters
-                              </Button>
+                              </Button> */}
                             </div>
                           </div>
 
@@ -1080,7 +1162,7 @@ export default function Home() {
                                     size="sm"
                                     variant={savedProfiles.has(candidate.public_id) ? "default" : "outline"}
                                     className={`flex-shrink-0 ${savedProfiles.has(candidate.public_id) ? 'text-white' : 'text-primary border-primary hover:bg-primary/5'}`}
-                                    onClick={() => handleToggleSave(candidate.public_id)}
+                                    onClick={(e) => handleToggleSave(candidate.public_id, e)}
                                   >
                                     <Bookmark className={`w-4 h-4 mr-1 ${savedProfiles.has(candidate.public_id) ? 'fill-white' : ''}`} />
                                     {savedProfiles.has(candidate.public_id) ? "Saved" : "Save"}
@@ -1314,12 +1396,12 @@ export default function Home() {
                     title={selectedJD.name}
                   >
                     <span className="truncate">@{selectedJD.name}</span>
-                    <button
+                    <Button
                       onClick={() => setSelectedJD(null)}
                       className="ml-1 hover:bg-primary/20 rounded-full p-0.5 flex-shrink-0"
                     >
                       <X className="h-4 w-4" />
-                    </button>
+                    </Button>
                   </span>
                 </div>
               )}
