@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import { useState } from 'react';
@@ -50,7 +51,7 @@ export function CreateJdDialog({ onJdCreated, children }: CreateJdDialogProps) {
       onJdCreated();
       setIsOpen(false);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not create job description.' });
+      toast({ variant: 'destructive', title: 'Error', description: `Could not create job description. ${error}` });
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +90,7 @@ export function CreateJdDialog({ onJdCreated, children }: CreateJdDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] min-h-fit h-[50%] flex flex-col">
+      <DialogContent className="sm:max-w-[66%] min-h-fit h-[66%] flex flex-col">
         <DialogHeader className="h-16 max-h-16">
           <DialogTitle>Create New Job Description</DialogTitle>
           <DialogDescription>Add a new JD by entering the details manually or uploading a file.</DialogDescription>
@@ -99,9 +100,9 @@ export function CreateJdDialog({ onJdCreated, children }: CreateJdDialogProps) {
             <TabsTrigger value="manual">Manual Entry</TabsTrigger>
             <TabsTrigger value="upload">Upload File</TabsTrigger>
           </TabsList>
-          <TabsContent value="manual" className="space-y-4 py-4 h-[300px]">
+          <TabsContent value="manual" className="space-y-4 py-4 h-[30%]">
             <Input placeholder="Job Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-            <Textarea placeholder="Job description content..." value={content} onChange={(e) => setContent(e.target.value)} rows={10} />
+            <Textarea className='border rounded-2xl h-[300px]' placeholder="Job description content..." value={content} onChange={(e) => setContent(e.target.value)} rows={10} />
             <Button onClick={handleManualSubmit} disabled={isLoading}>
               {isLoading && <IconLoader2 className="mr-2 h-4 w-4 animate-spin" />} Create JD
             </Button>

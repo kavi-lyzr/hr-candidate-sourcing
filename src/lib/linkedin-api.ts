@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * LinkedIn API Integration via RapidAPI
  * 
@@ -305,32 +306,32 @@ export function generateProfileUrl(profile: LinkedInProfile, uniqueId: string): 
 /**
  * Remove empty, null, or undefined fields from an object
  */
-function removeEmptyFields(obj: any): any {
-    if (Array.isArray(obj)) {
-        const filtered = obj.map(removeEmptyFields).filter(item => {
-            if (typeof item === 'object' && item !== null) {
-                return Object.keys(item).length > 0;
-            }
-            return item !== null && item !== undefined && item !== '';
-        });
-        return filtered.length > 0 ? filtered : undefined;
-    }
+// function removeEmptyFields(obj: any): any {
+//     if (Array.isArray(obj)) {
+//         const filtered = obj.map(removeEmptyFields).filter(item => {
+//             if (typeof item === 'object' && item !== null) {
+//                 return Object.keys(item).length > 0;
+//             }
+//             return item !== null && item !== undefined && item !== '';
+//         });
+//         return filtered.length > 0 ? filtered : undefined;
+//     }
     
-    if (typeof obj === 'object' && obj !== null) {
-        const cleaned: any = {};
-        for (const [key, value] of Object.entries(obj)) {
-            if (value === null || value === undefined || value === '') continue;
+//     if (typeof obj === 'object' && obj !== null) {
+//         const cleaned: any = {};
+//         for (const [key, value] of Object.entries(obj)) {
+//             if (value === null || value === undefined || value === '') continue;
             
-            const cleanedValue = removeEmptyFields(value);
-            if (cleanedValue !== undefined) {
-                cleaned[key] = cleanedValue;
-            }
-        }
-        return Object.keys(cleaned).length > 0 ? cleaned : undefined;
-    }
+//             const cleanedValue = removeEmptyFields(value);
+//             if (cleanedValue !== undefined) {
+//                 cleaned[key] = cleanedValue;
+//             }
+//         }
+//         return Object.keys(cleaned).length > 0 ? cleaned : undefined;
+//     }
     
-    return obj;
-}
+//     return obj;
+// }
 
 /**
  * Format profile for LLM consumption (optimized, concise version)

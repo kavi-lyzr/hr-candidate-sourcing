@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
 import { decrypt } from '@/lib/lyzr-services';
 import { performLinkedInSearch, formatProfileForLLM, calculateYearsOfExperience, deriveProfileId, generateProfileUrl, type LinkedInSearchParams } from '@/lib/linkedin-api';
@@ -113,7 +115,7 @@ export async function POST(request: Request) {
         console.log('Executing LinkedIn search with params:', searchParams);
 
         // 6. Perform LinkedIn search (3-step process)
-        const searchResults = await performLinkedInSearch(searchParams);
+        const searchResults = await performLinkedInSearch(searchParams, MAX_LIMIT, 4000);
 
         if (!searchResults.data || searchResults.data.length === 0) {
             return NextResponse.json({

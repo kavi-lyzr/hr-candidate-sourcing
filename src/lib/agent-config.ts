@@ -322,44 +322,6 @@ export const tools = {
                     }
                 }
             }
-        },
-        "/api/tools/generate_profile_summaries": {
-            "post": {
-                "summary": "Generate summaries for candidate profiles",
-                "description": "Internal tool used to generate contextual summaries for candidate profiles. Returns the summaries in a structured format.",
-                "operationId": "generate_profile_summaries",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "type": "object",
-                                "required": [
-                                    "summaries"
-                                ],
-                                "properties": {
-                                    "summaries": {
-                                        "type": "object",
-                                        "description": "A mapping of public_id to summary text for each candidate.",
-                                        "additionalProperties": { "type": "string" }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successfully stored profile summaries."
-                    },
-                    "400": {
-                        "description": "Bad request due to missing required fields."
-                    },
-                    "500": {
-                        "description": "Internal server error during summary generation."
-                    }
-                }
-            }
         }
     }
 };
