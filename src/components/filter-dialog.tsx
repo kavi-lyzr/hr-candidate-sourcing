@@ -130,13 +130,12 @@ export function FilterDialog({ open, onOpenChange, onSaveChanges }: FilterDialog
               {jobTitles.map((title) => (
                 <Badge key={title} variant="outline" className="h-7 px-2 gap-1">
                   <span>{title}</span>
-                  <button 
+                  <Button 
                     className="ml-1 hover:text-red-500" 
                     onClick={() => removeJobTitle(title)}
-                    type="button"
                   >
                     <IconX className="w-3 h-3" />
-                  </button>
+                  </Button>
                 </Badge>
               ))}
             </div>
@@ -167,13 +166,12 @@ export function FilterDialog({ open, onOpenChange, onSaveChanges }: FilterDialog
                 <Badge key={company.name} variant="outline" className="h-7 px-2 gap-1">
                   <IconBuilding className="w-3 h-3 text-blue-500" />
                   <span>{company.name}</span>
-                  <button 
+                  <Button 
                     className="ml-1 hover:text-red-500" 
                     onClick={() => removeCompany(company.name)}
-                    type="button"
                   >
                     <IconX className="w-3 h-3" />
-                  </button>
+                  </Button>
                 </Badge>
               ))}
             </div>
@@ -204,13 +202,12 @@ export function FilterDialog({ open, onOpenChange, onSaveChanges }: FilterDialog
                 <Badge key={location} variant="outline" className="h-7 px-2 gap-1">
                   <IconMapPin className="w-3 h-3 text-blue-500" />
                   <span>{location}</span>
-                  <button 
+                  <Button
                     className="ml-1 hover:text-red-500" 
                     onClick={() => removeLocation(location)}
-                    type="button"
                   >
                     <IconX className="w-3 h-3" />
-                  </button>
+                  </Button>
                 </Badge>
               ))}
             </div>
@@ -262,13 +259,12 @@ export function FilterDialog({ open, onOpenChange, onSaveChanges }: FilterDialog
               {universities.map((university) => (
                 <Badge key={university} variant="outline" className="h-7 px-2 gap-1">
                   <span>{university}</span>
-                  <button 
+                  <Button 
                     className="ml-1 hover:text-red-500" 
                     onClick={() => removeUniversity(university)}
-                    type="button"
                   >
                     <IconX className="w-3 h-3" />
-                  </button>
+                  </Button>
                 </Badge>
               ))}
             </div>

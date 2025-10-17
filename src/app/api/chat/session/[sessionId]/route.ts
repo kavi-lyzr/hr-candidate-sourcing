@@ -33,6 +33,8 @@ export async function GET(
                 initialQuery: session.initialQuery,
                 conversationHistory: session.conversationHistory,
                 toolResults: session.toolResults, // Include tool results for candidate data
+                attachedJd: session.attachedJd?.toString() || null, // Include attached JD ID
+                attachedJdTitle: session.attachedJdTitle || null, // Include attached JD title
                 createdAt: session.createdAt,
                 updatedAt: session.updatedAt,
             }
