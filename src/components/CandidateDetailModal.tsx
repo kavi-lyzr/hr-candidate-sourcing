@@ -38,7 +38,7 @@ export function CandidateDetailModal({ open, onOpenChange, candidate }: Candidat
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="min-w-[66%] max-h-[90vh]">
+      <DialogContent className="2xl:min-w-[40%] md:min-w-[66%] min-w-[80%] max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="sr-only">{fullName}</DialogTitle>
         </DialogHeader>

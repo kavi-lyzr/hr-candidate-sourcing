@@ -1,4 +1,20 @@
-export const availableLocations = {
+export const availableLocations = { 
+
+    // Countries & Regions
+    "India": "102713980",
+    "United States": "103644278",
+    "United Kingdom": "101165590",
+    "Canada": "101174742",
+    "Australia": "101452733",
+    "New Zealand": "105490917",
+    "European Union": "91000000",
+    "Singapore": "102454443",
+    "East Asia": "91000012",
+    "South Asia": "91000013",
+    "South Africa": "104035573",
+    "Middle East": "91000001",
+
+    // Indian cities
     "Mumbai": "90009639",
     "Delhi": "105150288",
     "Bengaluru": "105214831",
@@ -50,6 +66,9 @@ export const availableLocations = {
     "Mangalore": "116529983",
     "Tiruchirappalli (Trichy)": "105304484",
     "Kochi (Cochin)": "100100512",
+
+
+    // USA cities
     "New York": "102571732",
     "Los Angeles": "102448103",
     "Chicago": "103112676",
@@ -137,7 +156,7 @@ export const availableLocations = {
     "Reno": "106693758",
     "Glendale": "100820980",
     "Norfolk": "104167482",
-    "Winston–Salem": "105231863",
+    "Winston-Salem": "105231863",
     "North Las Vegas": "102801014",
     "Irving": "102387510",
     "Chesapeake": "106976053",
