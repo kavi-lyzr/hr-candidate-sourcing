@@ -58,16 +58,9 @@ export default function JDLibraryPage() {
     // Store the ID before any state changes
     const idToDelete = selectedJd?._id.toString();
 
-    console.log('Delete complete called for:', idToDelete);
-    console.log('Current JDs:', jds.map(j => j._id.toString()));
-
     // Optimistically remove the JD from the list immediately
     if (idToDelete) {
-      setJds(prevJds => {
-        const filtered = prevJds.filter(jd => jd._id.toString() !== idToDelete);
-        console.log('Filtered JDs:', filtered.map(j => j._id.toString()));
-        return filtered;
-      });
+      setJds(prevJds => prevJds.filter(jd => jd._id.toString() !== idToDelete));
     }
 
     // Then fetch from server to ensure consistency (after a small delay)

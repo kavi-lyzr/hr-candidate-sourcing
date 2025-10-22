@@ -20,14 +20,14 @@ interface CandidateDetailModalProps {
 }
 
 export function CandidateDetailModal({ open, onOpenChange, candidate, sessionId, onSaveToggle }: CandidateDetailModalProps) {
-  const { user } = useAuth();
+  const { userId } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
   const [isTogglingeSave, setIsTogglingSave] = useState(false);
 
   // Hooks must be called before any early returns
   useEffect(() => {
     const checkIfSaved = async () => {
-      if (!user || !candidate || !sessionId) return;
+      if (!userId || !candidate || !sessionId) return;
 
       const rawData = candidate.rawData || candidate;
       const publicId = rawData.public_id || candidate.public_id || "";
@@ -35,7 +35,7 @@ export function CandidateDetailModal({ open, onOpenChange, candidate, sessionId,
       if (!publicId) return;
 
       try {
-        const response = await fetch(`/api/profiles/saved?userId=${user.id}&candidatePublicId=${publicId}`, {
+        const response = await fetch(`/api/profiles/saved?userId=${userId}&candidatePublicId=${publicId}`, {
           headers: {
             'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
           }
@@ -53,7 +53,7 @@ export function CandidateDetailModal({ open, onOpenChange, candidate, sessionId,
     if (open) {
       checkIfSaved();
     }
-  }, [open, user, candidate, sessionId]);
+  }, [open, userId, candidate, sessionId]);
 
   if (!candidate) return null;
 
@@ -76,7 +76,7 @@ export function CandidateDetailModal({ open, onOpenChange, candidate, sessionId,
 
   // Toggle save/unsave
   const handleToggleSave = async () => {
-    if (!user || !publicId || !sessionId) {
+    if (!userId || !publicId || !sessionId) {
       toast.error('Unable to save profile. Please try again.');
       return;
     }
@@ -92,7 +92,7 @@ export function CandidateDetailModal({ open, onOpenChange, candidate, sessionId,
         body: JSON.stringify({
           candidatePublicId: publicId,
           sessionId: sessionId,
-          user: user
+          user: { id: userId }
         })
       });
 
@@ -161,7 +161,7 @@ export function CandidateDetailModal({ open, onOpenChange, candidate, sessionId,
                       {linkedinUrl.includes('google.com') ? 'Search on Google' : 'View LinkedIn Profile'}
                     </a>
                   </Button>
-                  {sessionId && user && (
+                  {sessionId && userId && (
                     <Button
                       variant={isSaved ? "default" : "outline"}
                       size="sm"

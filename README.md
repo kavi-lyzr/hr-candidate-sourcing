@@ -2,6 +2,16 @@
 
 An AI-powered web application that revolutionizes talent sourcing for HR professionals and recruiters. Built with Next.js and powered by Lyzr AI agents, this platform provides intelligent candidate search, evaluation, and management capabilities.
 
+<!-- > **Note**: This is a simplified, open-source version for learning and experimentation. For enterprise-grade features, custom integrations, and production support, [contact Lyzr](https://www.lyzr.ai/) to build a tailored solution for your organization. -->
+
+## Screenshots
+
+<!-- Add screenshots here to showcase your application -->
+<!-- Recommended: Add images to a /public/screenshots/ folder and reference them like this: -->
+![Dashboard](./public/screenshots/dashboard.png) ![Candidate Matching](./public/screenshots/matching.png)
+<!-- ![JD Library](./public/screenshots/jd-library.png) -->
+
+
 ## What It Does
 
 This application helps streamline the recruitment process through:
@@ -36,6 +46,29 @@ This application helps streamline the recruitment process through:
 - **Type Safety**: Full TypeScript implementation
 - **Database**: MongoDB with Mongoose ODM for data persistence
 
+## Tech Stack
+
+### Frontend
+- **Next.js 14+** - React framework with App Router
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Utility-first styling
+- **shadcn/ui** - High-quality UI components
+- **Radix UI** - Accessible component primitives
+- **Lucide React** - Icon library
+
+### Backend
+- **Next.js API Routes** - Serverless API endpoints
+- **MongoDB** - NoSQL database
+- **Mongoose** - MongoDB ODM
+- **Server-Sent Events (SSE)** - Real-time streaming
+
+### AI & APIs
+- **Lyzr AI** - AI agent framework for intelligent candidate sourcing
+- **RapidAPI (LinkedIn Data)** - Candidate profile enrichment
+
+### Authentication
+- **Lyzr/Memberstack** - User authentication and management
+
 ## Self-Hosting Instructions
 
 ### Prerequisites
@@ -47,24 +80,43 @@ This application helps streamline the recruitment process through:
 
 ### Environment Variables
 
-Create a `.env.local` file in the project root with the following variables:
+Create a `.env` file in the project root based on `.env.example`:
+
+```bash
+cp .env.example .env
+```
+
+Then fill in your actual values:
 
 ```env
-# Database
-MONGODB_URI=mongodb://localhost:27017/lyzr-hr-sourcing
+# MongoDB connection string
+MONGODB_URI=your_mongodb_connection_string_here
 
-# Application URLs
+# Encryption key for sensitive data (use a long, random string)
+ENCRYPTION_KEY=your_encryption_key_here
+
+# Public app URL (used for metadata and redirects)
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-# LinkedIn API (via RapidAPI)
+# RapidAPI configuration for LinkedIn data
 RAPID_API_BASE=fresh-linkedin-profile-data.p.rapidapi.com
-RAPID_API_KEY=your_rapid_api_key
+RAPID_API_KEY=your_rapidapi_key_here
 
-# Authentication
-API_AUTH_TOKEN=your_secure_auth_token
-NEXT_PUBLIC_API_AUTH_TOKEN=same_as_above
-ENCRYPTION_KEY=your_32_character_encryption_key
+# API authentication token (server-side)
+API_AUTH_TOKEN=your_api_auth_token_here
+
+# API authentication token (client-side, must be prefixed with NEXT_PUBLIC_)
+NEXT_PUBLIC_API_AUTH_TOKEN=your_api_auth_token_here
+
+# Google Site Verification (optional, for SEO)
+GOOGLE_SITE_VERIFICATION=your_google_verification_code_here
 ```
+
+**Required API Keys:**
+- **MongoDB URI**: Get a free database at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+- **RapidAPI Key**: Sign up at [RapidAPI](https://rapidapi.com/) and subscribe to "Fresh LinkedIn Profile Data"
+- **API Auth Token**: Generate a secure random token (e.g., using `openssl rand -hex 32`)
+- **Encryption Key**: Generate a secure random key (minimum 32 characters)
 
 ### Installation
 
@@ -127,3 +179,30 @@ Once running, the application provides a clean interface for:
 4. **Matching candidates** against job requirements
 
 The AI agents will guide you through the process, making candidate sourcing more efficient and effective.
+
+## Contributing
+
+We welcome contributions from the community! Whether it's bug fixes, new features, documentation improvements, or suggestions, your input is valuable.
+
+Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines on how to contribute to this project.
+
+## Support
+
+For questions, issues, or feature requests:
+
+1. **Open Source Community**: Open an issue in this repository for bugs or feature requests
+2. **Enterprise Solutions**: For custom integrations, advanced features, and production support, [contact Lyzr](https://www.lyzr.ai/)
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+
+## Acknowledgments
+
+- Built with [Lyzr AI](https://www.lyzr.ai/) - AI agent framework
+- UI components from [shadcn/ui](https://ui.shadcn.com/)
+- LinkedIn data via [RapidAPI](fresh-linkedin-profile-data.p.rapidapi.com)
+
+---
+
+**Need a custom solution?** This open-source version provides core functionality for learning and experimentation. For production-ready deployments with enterprise features, custom integrations, and dedicated support, [reach out to Lyzr](https://www.lyzr.ai/).
