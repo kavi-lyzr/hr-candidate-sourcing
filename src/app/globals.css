@@ -365,7 +365,7 @@ body.no-gradient-background {
   line-clamp: 8;
 }
 
-::selection {
+:not(.userchatcontent)::selection {
   @apply bg-primary text-primary-foreground;
 }
 
@@ -440,8 +440,4 @@ body.no-gradient-background {
   .focus-enhanced:focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
-}
-
-::selection {
-  @apply bg-primary text-primary-foreground;
 }

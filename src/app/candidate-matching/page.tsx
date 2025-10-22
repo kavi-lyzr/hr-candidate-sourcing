@@ -289,20 +289,20 @@ export default function CandidateMatching() {
   const selectedCandidatesCount = candidateDatabase.filter(c => c.selected).length;
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Candidate Matching</h1>
-          <p className="text-muted-foreground">Match candidates with job descriptions using AI-powered ranking</p>
+          <h1 className="text-xl sm:text-2xl font-bold">Candidate Matching</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Match candidates with job descriptions using AI-powered ranking</p>
         </div>
       </div>
-      
-      <div className="flex gap-6 h-[calc(100vh-230px)] md:overflow-y-clip">
+
+      <div className="flex flex-col lg:flex-row gap-6 lg:h-[calc(100vh-230px)]">
         {/* Left Section */}
-        <div className="w-1/2 flex flex-col space-y-6">
+        <div className="w-full lg:w-1/2 flex flex-col space-y-4 lg:space-y-6">
           {/* Select JD Dropdown */}
           <div>
-            <h2 className="text-lg font-semibold mb-3">Select Job Description</h2>
+            <h2 className="text-base sm:text-lg font-semibold mb-3">Select Job Description</h2>
             <Select value={selectedJD} onValueChange={(value) => {
               setSelectedJD(value);
             }}>
@@ -329,13 +329,13 @@ export default function CandidateMatching() {
           </div>
 
           {/* Candidate Database */}
-          <div className="flex-1 flex flex-col min-h-0">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold">Candidate Database</h2>
+          <div className="flex-1 flex flex-col min-h-0 lg:max-h-none max-h-[400px]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-3">
+              <h2 className="text-base sm:text-lg font-semibold">Candidate Database</h2>
               <div className="flex space-x-2">
                 <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" className="text-xs sm:text-sm">
                       Import Profiles
                     </Button>
                   </DialogTrigger>
@@ -471,10 +471,10 @@ export default function CandidateMatching() {
               </div>
             </div>
             
-            <div className="mt-4 text-sm text-muted-foreground">
+            <div className="mt-4 text-xs sm:text-sm text-muted-foreground">
               {selectedCandidatesCount} of {filteredCandidates.length} candidates selected
               {searchQuery && (
-                <span className="text-muted-foreground/60 ml-2">
+                <span className="text-muted-foreground/60 ml-2 hidden sm:inline">
                   (showing {filteredCandidates.length} of {candidateDatabase.length} total)
                 </span>
               )}
@@ -482,21 +482,23 @@ export default function CandidateMatching() {
           </div>
 
           {/* Match Candidates Button */}
-          <div className="mt-auto">
-            <Button 
+          <div className="mt-auto pt-4">
+            <Button
               onClick={handleMatchCandidates}
               disabled={!selectedJD || selectedCandidatesCount === 0 || isMatching}
-              className="w-full h-12"
+              className="w-full h-11 sm:h-12 text-sm sm:text-base"
             >
               {isMatching ? (
                 <>
                   <IconLoader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Matching Candidates...
+                  <span className="hidden sm:inline">Matching Candidates...</span>
+                  <span className="sm:hidden">Matching...</span>
                 </>
               ) : (
                 <>
                   <IconUsersGroup className="w-4 h-4 mr-2" />
-                  Match {selectedCandidatesCount} Candidates
+                  <span className="hidden sm:inline">Match {selectedCandidatesCount} Candidates</span>
+                  <span className="sm:hidden">Match ({selectedCandidatesCount})</span>
                 </>
               )}
             </Button>
@@ -504,17 +506,17 @@ export default function CandidateMatching() {
         </div>
 
         {/* Right Section */}
-        <div className="w-1/2 flex flex-col">
+        <div className="w-full lg:w-1/2 flex flex-col mt-6 lg:mt-0">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">
+            <h2 className="text-base sm:text-lg font-semibold">
               {showResults ? "Ranked Candidates" : "Candidate Ranking"}
             </h2>
             {showResults && (
-              <Badge variant="outline">{rankedCandidates.length} matches</Badge>
+              <Badge variant="outline" className="text-xs sm:text-sm">{rankedCandidates.length} matches</Badge>
             )}
           </div>
-          
-          <div className="bg-card rounded-lg border flex-1 overflow-y-auto">
+
+          <div className="bg-card rounded-lg border flex-1 overflow-y-auto min-h-[400px] lg:min-h-0">
             {isMatching ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center text-muted-foreground">
@@ -532,23 +534,23 @@ export default function CandidateMatching() {
                   if (!candidate) return null;
                   
                   return (
-                    <div 
-                      key={rankedCandidate.candidate_id} 
-                      className="border rounded-lg p-4 hover:shadow-md transition-all duration-200 animate-fade-in-up cursor-pointer"
+                    <div
+                      key={rankedCandidate.candidate_id}
+                      className="border rounded-lg p-3 sm:p-4 hover:shadow-md transition-all duration-200 animate-fade-in-up cursor-pointer"
                       style={{ animationDelay: `${index * 100}ms` }}
                       onClick={() => openCandidateDetail(candidate)}
                     >
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-3 mb-2 flex-wrap">
-                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800 text-xs">
                               #{rankedCandidate.rank}
                             </Badge>
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800">
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800 text-xs">
                               {rankedCandidate.match_score}% match
                             </Badge>
-                            <div className="flex items-center space-x-2">
-                              <h3 className="font-semibold text-primary hover:text-primary/80 cursor-pointer">
+                            <div className="flex items-center gap-2 w-full sm:w-auto">
+                              <h3 className="font-semibold text-sm sm:text-base text-primary hover:text-primary/80 cursor-pointer truncate">
                                 {candidate.name}
                               </h3>
                               {candidate.public_id && (
@@ -563,8 +565,8 @@ export default function CandidateMatching() {
                               )}
                             </div>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-2">{candidate.title}</p>
-                          <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-3 flex-wrap">
+                          <p className="text-xs sm:text-sm text-muted-foreground mb-2 line-clamp-2">{candidate.title}</p>
+                          <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mb-3 flex-wrap">
                             <div className="flex items-center space-x-1">
                               {candidate.companyLogo ? (
                                 <Image 
@@ -597,13 +599,13 @@ export default function CandidateMatching() {
                           
                           {/* AI Analysis */}
                           <div className="mt-3">
-                            <div className="flex items-start space-x-2">
-                              <div className="flex items-center mt-0.5">
-                                <IconSparkles className="h-4 w-4 text-primary" />
+                            <div className="flex items-start gap-2">
+                              <div className="flex items-center mt-0.5 flex-shrink-0">
+                                <IconSparkles className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
                               </div>
                               <div className="relative flex-1">
                                 <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent rounded-sm opacity-60"></div>
-                                <p className="text-sm text-foreground relative z-10 px-2 py-1">
+                                <p className="text-xs sm:text-sm text-foreground relative z-10 px-2 py-1">
                                   {rankedCandidate.summary}
                                 </p>
                               </div>
@@ -638,16 +640,16 @@ export default function CandidateMatching() {
                             </div>
                           )}
                         </div>
-                        <div className="ml-4">
+                        <div className="ml-2 flex-shrink-0">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button size="sm" variant="outline" className="h-8 w-8 p-0">
-                                <IconDotsVertical className="w-4 h-4" />
+                              <Button size="sm" variant="outline" className="h-7 w-7 sm:h-8 sm:w-8 p-0">
+                                <IconDotsVertical className="w-3 h-3 sm:w-4 sm:h-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
-                                <IconBookmark className="w-4 h-4 mr-2" />
+                              <DropdownMenuItem className="text-xs sm:text-sm">
+                                <IconBookmark className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
                                 Remove from List
                               </DropdownMenuItem>
                             </DropdownMenuContent>

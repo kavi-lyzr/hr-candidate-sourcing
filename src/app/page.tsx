@@ -827,13 +827,13 @@ export default function Home() {
           <div className="absolute inset-0 bg-radial-fade"></div>
         </div>
         {/* Fixed Header with Controls */}
-        <div className="fixed top-20 right-4 z-30 flex items-center gap-2">
+        <div className="fixed top-20 right-2 md:right-4 z-30 flex items-center gap-2">
           {/* History dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-2 bg-background/90 backdrop-blur-sm shadow-lg">
                 <History className="h-4 w-4" />
-                History
+                <span className="hidden sm:inline">History</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64 max-h-64 overflow-y-auto">
@@ -900,15 +900,15 @@ export default function Home() {
             className="gap-2 bg-background/90 backdrop-blur-sm shadow-lg"
           >
             <RefreshCw className="h-4 w-4" />
-            Reset
+            <span className="hidden sm:inline">Reset</span>
           </Button>
         </div>
 
         {/* Chat Interface */}
         <div className="relative z-10 flex flex-col h-[calc(100vh-100px)] overflow-hidden">
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto pt-16 pb-16">
-            <div className="w-full 2xl:max-w-5xl xl:max-w-6xl mx-auto px-4 space-y-6">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden pt-16 pb-20 md:pb-16">
+            <div className="w-full 2xl:max-w-5xl xl:max-w-6xl mx-auto px-2 sm:px-4 space-y-6 overflow-hidden">
               {/* JD Attachment Indicator */}
               {currentSessionJdTitle && messages.length > 0 && (
                 <div className="flex justify-center mb-4">
@@ -922,40 +922,40 @@ export default function Home() {
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up`}
+                  className={`flex gap-2 sm:gap-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in-up overflow-hidden`}
                 >
                   {message.role === 'assistant' && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-primary" />
+                    <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Bot className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
                     </div>
                   )}
                   <div
-                    className={`max-w-[70%] rounded-2xl px-4 py-3 ${message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
+                    className={`max-w-[calc(100%-2rem)] sm:max-w-[calc(85%-2rem)] lg:max-w-[70%] rounded-2xl px-3 sm:px-4 py-3 overflow-hidden ${message.role === 'user'
+                        ? 'bg-primary text-primary-foreground userchatcontent'
                         : 'bg-muted/60 border border-border/30 backdrop-blur-sm'
                       }`}
                   >
-                    <div className={`text-sm leading-relaxed whitespace-pre-wrap ${message.role === 'user' ? 'text-primary-foreground' : 'text-foreground'}`}>
+                    <div className={`text-sm leading-relaxed whitespace-pre-wrap break-words ${message.role === 'user' ? 'text-primary-foreground userchatcontent' : 'text-foreground'}`}>
                       {message.role === 'assistant' ? renderMessageContent(message.content, message.candidates) : message.content}
                     </div>
                     {message.candidates && (
-                      <div className="mt-4 space-y-4">
+                      <div className="mt-4 space-y-4 overflow-hidden">
                         <h4 className="font-semibold text-primary mb-3">Top Recommendations</h4>
                         {rankCandidates(message.candidates, message.content).slice(0, 3).map((candidate) => (
                           <div
                             key={candidate.id}
-                            className="border rounded-lg p-4 bg-card/50 hover:bg-card transition-colors cursor-pointer"
+                            className="border rounded-lg p-3 sm:p-4 bg-card/50 hover:bg-card transition-colors cursor-pointer overflow-hidden"
                             onClick={() => openCandidateDetail(candidate)}
                           >
-                            <div className="flex items-start space-x-3">
+                            <div className="flex items-start gap-2 sm:gap-3 min-w-0">
                               {/* Profile picture removed - LinkedIn API returns empty strings */}
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-2 mb-1">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1 min-w-0">
                                   <a
                                     href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="font-semibold text-primary hover:text-primary/80 hover:underline"
+                                    className="font-semibold text-sm sm:text-base text-primary hover:text-primary/80 hover:underline truncate"
                                   >
                                     {candidate.name}
                                   </a>
@@ -963,68 +963,69 @@ export default function Home() {
                                     href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="hover:opacity-80 transition-opacity"
+                                    className="hover:opacity-80 transition-opacity flex-shrink-0"
                                   >
                                     <Image
                                       src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/LinkedIn_icon.svg/1024px-LinkedIn_icon.svg.png"
                                       alt="LinkedIn"
                                       width={16}
                                       height={16}
+                                      className="w-3 h-3 sm:w-4 sm:h-4"
                                     />
                                   </a>
                                 </div>
-                                <div className="flex items-center space-x-2 mb-1">
+                                <div className="flex items-start gap-2 mb-1 min-w-0">
                                   {candidate.companyLogo && (
                                     <Image
                                       src={candidate.companyLogo}
                                       alt={candidate.company}
                                       width={16}
                                       height={16}
-                                      className="w-4 h-4 object-contain"
+                                      className="w-3 h-3 sm:w-4 sm:h-4 object-contain flex-shrink-0 mt-0.5"
                                       onError={(e) => {
                                         const target = e.target as HTMLImageElement;
                                         target.style.display = 'none';
                                       }}
                                     />
                                   )}
-                                  <p className="text-sm text-foreground font-medium">{candidate.title}</p>
+                                  <p className="text-xs sm:text-sm text-foreground font-medium break-words">{candidate.title}</p>
                                 </div>
-                                <div className="flex items-center space-x-2 mb-1">
-                                  <MapPin className="w-4 h-4 text-muted-foreground" />
-                                  <p className="text-sm text-muted-foreground">{candidate.location}</p>
+                                <div className="flex items-start gap-2 mb-1 min-w-0">
+                                  <MapPin className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                  <p className="text-xs sm:text-sm text-muted-foreground break-words">{candidate.location}</p>
                                 </div>
                                 {candidate.education && (
-                                  <div className="flex items-center space-x-2 mb-2">
-                                    <School className="w-4 h-4 text-muted-foreground" />
-                                    <p className="text-sm text-muted-foreground">{candidate.education}</p>
+                                  <div className="flex items-start gap-2 mb-2 min-w-0">
+                                    <School className="w-3 h-3 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+                                    <p className="text-xs sm:text-sm text-muted-foreground break-words">{candidate.education}</p>
                                   </div>
                                 )}
-                                <div className="mt-2">
-                                  <div className="flex items-start space-x-2">
-                                    <Sparkles className="min-h-4 min-w-4 text-primary mt-0.5" />
-                                    <p className="text-sm text-muted-foreground italic line-clamp-8">{candidate.summary}</p>
+                                <div className="mt-2 min-w-0">
+                                  <div className="flex items-start gap-2">
+                                    <Sparkles className="min-h-3 min-w-3 sm:min-h-4 sm:min-w-4 text-primary flex-shrink-0 mt-0.5" />
+                                    <p className="text-xs sm:text-sm text-muted-foreground italic line-clamp-8 break-words">{candidate.summary}</p>
                                   </div>
                                 </div>
                               </div>
                               <Button
                                 size="sm"
                                 variant={savedProfiles.has(candidate.public_id) ? "default" : "outline"}
-                                className={`flex-shrink-0 ${savedProfiles.has(candidate.public_id) ? 'text-white' : 'text-primary border-primary hover:bg-primary/5'}`}
+                                className={`flex-shrink-0 text-xs sm:text-sm ${savedProfiles.has(candidate.public_id) ? 'text-white' : 'text-primary border-primary hover:bg-primary/5'}`}
                                 onClick={(e) => handleToggleSave(candidate.public_id, e)}
                               >
-                                <Bookmark className={`w-4 h-4 mr-1 ${savedProfiles.has(candidate.public_id) ? 'fill-white' : ''}`} />
-                                {savedProfiles.has(candidate.public_id) ? "Saved" : "Save"}
+                                <Bookmark className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 ${savedProfiles.has(candidate.public_id) ? 'fill-white' : ''}`} />
+                                <span className="hidden sm:inline">{savedProfiles.has(candidate.public_id) ? "Saved" : "Save"}</span>
                               </Button>
                             </div>
                           </div>
                         ))}
 
                         {/* All Profiles Section with Pagination */}
-                        <div className="mt-8">
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-lg font-medium text-foreground">All Profiles ({message.candidates?.length || 0})</h4>
+                        <div className="mt-8 overflow-hidden">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 overflow-hidden">
+                            <h4 className="text-base sm:text-lg font-medium text-foreground break-words">All Profiles ({message.candidates?.length || 0})</h4>
                             <div className="flex items-center gap-2">
-                              <div className="text-sm text-muted-foreground">
+                              <div className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                                 {message.candidates && (
                                   <>
                                     {Math.min((currentPage - 1) * profilesPerPage + 1, message.candidates.length)} - {Math.min(currentPage * profilesPerPage, message.candidates.length)} of {message.candidates.length}
@@ -1046,15 +1047,16 @@ export default function Home() {
                           {/* Pagination Controls */}
                           {message.candidates && message.candidates.length > profilesPerPage && (
                             <div className="flex items-center justify-center mb-4">
-                              <div className="flex items-center space-x-2">
+                              <div className="flex items-center space-x-1 sm:space-x-2">
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                   disabled={currentPage === 1}
+                                  className="px-2 sm:px-3"
                                 >
                                   <ChevronLeft className="h-4 w-4" />
-                                  Previous
+                                  <span className="hidden sm:inline ml-1">Previous</span>
                                 </Button>
 
                                 <div className="flex items-center space-x-1">
@@ -1064,7 +1066,7 @@ export default function Home() {
                                       variant={currentPage === pageNumber ? "default" : "outline"}
                                       size="sm"
                                       onClick={() => setCurrentPage(pageNumber)}
-                                      className="min-w-8"
+                                      className="min-w-8 w-8 h-8 p-0"
                                     >
                                       {pageNumber}
                                     </Button>
@@ -1076,15 +1078,16 @@ export default function Home() {
                                   size="sm"
                                   onClick={() => setCurrentPage(prev => message.candidates ? Math.min(Math.ceil(message.candidates.length / profilesPerPage), prev + 1) : prev)}
                                   disabled={currentPage === (message.candidates ? Math.ceil(message.candidates.length / profilesPerPage) : 1)}
+                                  className="px-2 sm:px-3"
                                 >
-                                  Next
+                                  <span className="hidden sm:inline mr-1">Next</span>
                                   <ChevronRight className="h-4 w-4" />
                                 </Button>
                               </div>
                             </div>
                           )}
 
-                          <div className="space-y-3">
+                          <div className="space-y-3 min-w-0">
                             {(() => {
                               if (!message.candidates) return null;
 
@@ -1095,7 +1098,7 @@ export default function Home() {
                               return paginatedCandidates.map((candidate) => (
                                 <div
                                   key={candidate.id}
-                                  className="flex items-start space-x-3 p-4 border rounded-lg bg-card hover:bg-card/80 transition-colors cursor-pointer"
+                                  className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 border rounded-lg bg-card hover:bg-card/80 transition-colors cursor-pointer overflow-hidden min-w-0"
                                   onClick={(e) => {
                                     // Don't trigger if clicking the save button
                                     if ((e.target as HTMLElement).closest('button')) return;
@@ -1110,14 +1113,14 @@ export default function Home() {
                                         alt={candidate.company}
                                         width={24}
                                         height={24}
-                                        className="w-6 h-6 object-contain rounded"
+                                        className="w-5 h-5 sm:w-6 sm:h-6 object-contain rounded"
                                         onError={(e) => {
                                           const target = e.target as HTMLImageElement;
                                           target.style.display = 'none';
                                         }}
                                       />
                                     ) : (
-                                      <div className="w-6 h-6 bg-muted rounded flex items-center justify-center">
+                                      <div className="w-5 h-5 sm:w-6 sm:h-6 bg-muted rounded flex items-center justify-center flex-shrink-0">
                                         <span className="text-xs text-muted-foreground font-medium">
                                           {candidate.company?.charAt(0) || '?'}
                                         </span>
@@ -1126,12 +1129,12 @@ export default function Home() {
                                   </div>
 
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-center space-x-2 mb-1">
+                                    <div className="flex items-center gap-2 mb-1 min-w-0">
                                       <a
                                         href={candidate.linkedinUrl || `https://www.linkedin.com/in/${candidate.public_id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="font-semibold text-primary hover:text-primary/80 hover:underline truncate"
+                                        className="font-semibold text-sm sm:text-base text-primary hover:text-primary/80 hover:underline truncate"
                                       >
                                         {candidate.name}
                                       </a>
@@ -1146,13 +1149,14 @@ export default function Home() {
                                           alt="LinkedIn"
                                           width={14}
                                           height={14}
+                                          className="w-3 h-3 sm:w-3.5 sm:h-3.5"
                                         />
                                       </a>
                                     </div>
-                                    <p className="text-sm text-foreground font-medium truncate mb-1">{candidate.title}</p>
-                                    <p className="text-sm text-muted-foreground truncate mb-2">{candidate.company}</p>
+                                    <p className="text-xs sm:text-sm text-foreground font-medium line-clamp-2 mb-1 break-words">{candidate.title}</p>
+                                    <p className="text-xs sm:text-sm text-muted-foreground truncate mb-2">{candidate.company}</p>
                                     {candidate.summary && (
-                                      <p className="text-xs text-muted-foreground line-clamp-1">
+                                      <p className="text-xs text-muted-foreground line-clamp-2 break-words">
                                         {candidate.summary.length > 100
                                           ? `${candidate.summary.substring(0, 100)}...`
                                           : candidate.summary}
@@ -1163,11 +1167,11 @@ export default function Home() {
                                   <Button
                                     size="sm"
                                     variant={savedProfiles.has(candidate.public_id) ? "default" : "outline"}
-                                    className={`flex-shrink-0 ${savedProfiles.has(candidate.public_id) ? 'text-white' : 'text-primary border-primary hover:bg-primary/5'}`}
+                                    className={`flex-shrink-0 text-xs sm:text-sm ${savedProfiles.has(candidate.public_id) ? 'text-white' : 'text-primary border-primary hover:bg-primary/5'}`}
                                     onClick={(e) => handleToggleSave(candidate.public_id, e)}
                                   >
-                                    <Bookmark className={`w-4 h-4 mr-1 ${savedProfiles.has(candidate.public_id) ? 'fill-white' : ''}`} />
-                                    {savedProfiles.has(candidate.public_id) ? "Saved" : "Save"}
+                                    <Bookmark className={`w-3 h-3 sm:w-4 sm:h-4 ${savedProfiles.has(candidate.public_id) ? 'fill-white' : ''}`} />
+                                    <span className="hidden sm:inline ml-1">{savedProfiles.has(candidate.public_id) ? "Saved" : "Save"}</span>
                                   </Button>
                                 </div>
                               ));
@@ -1184,8 +1188,8 @@ export default function Home() {
                     </p>
                   </div>
                   {message.role === 'user' && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                      <User className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-muted flex items-center justify-center">
+                      <User className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
                     </div>
                   )}
                 </div>
@@ -1214,7 +1218,7 @@ export default function Home() {
           </div>
 
           {/* Fixed Input Area at Bottom */}
-          <div className="fixed bottom-0 left-64 right-0 bg-background/80 backdrop-blur-sm border-t">
+          <div className="fixed bottom-12 md:bottom-0 left-0 md:left-64 right-0 bg-background/80 backdrop-blur-sm border-t">
             <div className="max-w-2xl mx-auto px-4 py-4">
               <div className="flex gap-2">
                 <div className="relative flex-1">
@@ -1243,7 +1247,7 @@ export default function Home() {
                     }
                   }}
                   disabled={isLoading}
-                  className="h-12 w-12 p-0"
+                  className="h-12 w-12 p-0 flex-shrink-0"
                 >
                   <Send className="h-4 w-4" />
                 </Button>
@@ -1278,13 +1282,13 @@ export default function Home() {
         <div className="absolute inset-0 bg-radial-fade"></div>
       </div>
       {/* Fixed Header with Controls */}
-      <div className="fixed top-20 right-4 z-30 flex items-center gap-2">
+      <div className="fixed top-20 right-2 md:right-4 z-30 flex items-center gap-2">
         {/* History dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="gap-2 bg-background/90 backdrop-blur-sm shadow-lg">
               <History className="h-4 w-4" />
-              History
+              <span className="hidden sm:inline">History</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64 max-h-64 overflow-y-auto">
@@ -1352,7 +1356,7 @@ export default function Home() {
           className="gap-2 bg-background/90 backdrop-blur-sm shadow-lg disabled:opacity-50"
         >
           <RefreshCw className="h-4 w-4" />
-          Reset
+          <span className="hidden sm:inline">Reset</span>
         </Button>
       </div>
 
@@ -1367,14 +1371,14 @@ export default function Home() {
                 alt="Lyzr Logo"
                 width={80}
                 height={48}
-                className="h-12 w-auto object-contain dark:invert"
+                className="h-10 sm:h-12 w-auto object-contain dark:invert"
               />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-2">
             Lyzr HR Candidate Sourcing Agent
           </h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-base sm:text-lg px-2">
             Find exactly who you&apos;re looking for, in seconds.
             <a href={DEFAULT_DEMO_URL} target="_blank" rel="noopener noreferrer" className="text-primary cursor-pointer hover:underline ml-1">
               See how it works.
@@ -1383,17 +1387,17 @@ export default function Home() {
         </div>
 
         {/* Clean Search Interface */}
-        <div className="w-full max-w-3xl space-y-4 animate-fade-in-up">
+        <div className="w-full max-w-3xl space-y-4 animate-fade-in-up px-2">
 
           {/* Main Search Input */}
           <div className="relative">
             <div className="relative">
               {selectedJD && (
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
+                <div className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-10">
                   <span
                     className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary border border-primary/20"
                     style={{
-                      maxWidth: `${Math.min(selectedJD.name.length * 6.5 + 40, 280)}px`
+                      maxWidth: `${Math.min(selectedJD.name.length * 6.5 + 40, 200)}px`
                     }}
                     title={selectedJD.name}
                   >
@@ -1419,16 +1423,16 @@ export default function Home() {
                     }
                   }
                 }}
-                className={`min-h-14 max-h-32 text-base pr-24 border-2 border-border focus:border-primary rounded-lg shadow-sm resize-none bg-background/80 backdrop-blur-2xl`}
+                className={`min-h-14 max-h-32 text-sm sm:text-base pr-20 sm:pr-24 border-2 border-border focus:border-primary rounded-lg shadow-sm resize-none bg-background/80 backdrop-blur-2xl`}
                 style={{
-                  paddingLeft: selectedJD ? `${getJdTagPadding(selectedJD.name)}px` : '16px'
+                  paddingLeft: selectedJD ? `${getJdTagPadding(selectedJD.name)}px` : '12px'
                 }}
                 rows={1}
               />
             </div>
             <div className="absolute right-2 top-2">
               <Button
-                className="h-10 px-6"
+                className="h-10 px-4 sm:px-6 text-sm"
                 disabled={!searchQuery.trim()}
                 onClick={() => handleSearch()}
               >
@@ -1443,10 +1447,10 @@ export default function Home() {
               <Button
                 variant="outline"
                 onClick={() => setJdDropdownOpen(!jdDropdownOpen)}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-2 text-sm"
               >
-                {selectedJD?.name || "Select JD"}
-                <ChevronDown className="w-4 h-4" />
+                <span className="truncate max-w-[150px] sm:max-w-none">{selectedJD?.name || "Select JD"}</span>
+                <ChevronDown className="w-4 h-4 flex-shrink-0" />
               </Button>
               {jdDropdownOpen && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-lg shadow-lg z-10 min-w-48">

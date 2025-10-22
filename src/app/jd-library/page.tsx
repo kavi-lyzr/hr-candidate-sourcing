@@ -55,14 +55,14 @@ export default function JDLibraryPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Job Description Library</h1>
-          <p className="text-muted-foreground">Manage your repository of job descriptions.</p>
+          <h1 className="text-xl sm:text-2xl font-bold">Job Description Library</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Manage your repository of job descriptions.</p>
         </div>
         <CreateJdDialog onJdCreated={fetchJds}>
-          <Button>
+          <Button className="w-full sm:w-auto">
             <IconPlus className="mr-2 h-4 w-4" /> Create New JD
           </Button>
         </CreateJdDialog>
@@ -95,12 +95,12 @@ export default function JDLibraryPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 animate-fade-in-up">
           {jds.map((jd) => (
-            <Card key={jd._id.toString()} className="flex flex-col h-[250px] overflow-hidden">
-              <CardContent className="p-4 flex flex-col flex-grow">
-                <div className="flex-grow">
-                  <h3 className="font-semibold text-lg line-clamp-2 mb-1">{jd.title}</h3>
+            <Card key={jd._id.toString()} className="flex flex-col overflow-hidden">
+              <CardContent className="p-4 flex flex-col">
+                <div className="flex-grow min-h-0">
+                  <h3 className="font-semibold text-lg line-clamp-2 mb-1 min-h-[56px]">{jd.title}</h3>
                   <div className="flex items-center space-x-1 text-sm text-muted-foreground mb-2">
-                    <IconCalendar className="w-4 h-4" />
+                    <IconCalendar className="w-4 h-4 flex-shrink-0" />
                     <span>{new Date(jd.createdAt).toLocaleDateString()}</span>
                   </div>
                   <div className="relative h-[60px] overflow-hidden">
@@ -108,11 +108,11 @@ export default function JDLibraryPage() {
                     <div className="absolute bottom-0 left-0 w-full h-4 bg-gradient-to-t from-card to-transparent" />
                   </div>
                 </div>
-                <div className="flex items-center space-x-2 mt-4 pt-4 border-t">
-                  <Button size="sm" variant="outline" onClick={() => handleView(jd)}>
+                <div className="flex items-center gap-2 mt-4 pt-4 border-t flex-shrink-0">
+                  <Button size="sm" variant="outline" onClick={() => handleView(jd)} className="flex-1 sm:flex-none">
                     <IconEye className="w-4 h-4 mr-1" /> View
                   </Button>
-                  <Button size="sm" variant="destructive" onClick={() => handleDelete(jd)}>
+                  <Button size="sm" variant="destructive" onClick={() => handleDelete(jd)} className="flex-1 sm:flex-none">
                     <IconTrash className="w-4 h-4 mr-1" /> Delete
                   </Button>
                 </div>

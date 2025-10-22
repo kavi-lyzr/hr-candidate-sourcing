@@ -18,17 +18,25 @@ export function HeaderWithSection() {
   const sectionName = getSectionName(pathname);
 
   return (
-    <div className="flex h-14 items-center gap-3 border-b px-4 sticky top-0 z-10 bg-background">
+    <div className="flex h-14 items-center gap-2 sm:gap-3 border-b px-2 sm:px-4 sticky top-0 z-10 bg-background">
       <SidebarTrigger />
-      <div className="h-4 w-px bg-gray-300" />
-      <h1 className="text-sm font-medium text-foreground">{sectionName}</h1>
-      <div className="ml-auto flex items-center gap-2">
+      <div className="h-4 w-px bg-gray-300 hidden sm:block" />
+      <h1 className="text-xs sm:text-sm font-medium text-foreground truncate flex-1 sm:flex-none capitalize">
+        {sectionName}
+      </h1>
+      <div className="ml-auto flex items-center gap-1 sm:gap-2">
         <NotificationBell />
         <ThemeSwitcher />
         {isAuthenticated ? (
-          <Button variant="outline" onClick={logout}>Logout</Button>
+          <Button variant="outline" size="sm" onClick={logout} className="text-xs sm:text-sm">
+            <span className="hidden sm:inline">Logout</span>
+            <span className="sm:hidden">Out</span>
+          </Button>
         ) : (
-          <Button onClick={login}>Login</Button>
+          <Button size="sm" onClick={login} className="text-xs sm:text-sm">
+            <span className="hidden sm:inline">Login</span>
+            <span className="sm:hidden">In</span>
+          </Button>
         )}
       </div>
     </div>

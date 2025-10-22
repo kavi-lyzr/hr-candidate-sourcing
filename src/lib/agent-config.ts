@@ -1,5 +1,5 @@
-export const LATEST_SOURCING_AGENT_VERSION = '1.8.2';
-export const LATEST_MATCHING_AGENT_VERSION = '1.8.2';
+export const LATEST_SOURCING_AGENT_VERSION = '1.8.3';
+export const LATEST_MATCHING_AGENT_VERSION = '1.8.3';
 export const LATEST_TOOL_VERSION = '1.8.0';
 
 export const SOURCING_AGENT_CONFIG = {
