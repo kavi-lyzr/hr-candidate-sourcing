@@ -5,16 +5,56 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Building, MapPin, GraduationCap, Briefcase, Calendar, ExternalLink } from "lucide-react";
+import { Building, MapPin, GraduationCap, Briefcase, Calendar, ExternalLink, Bookmark } from "lucide-react";
 import Image from "next/image";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/AuthProvider";
+import { toast } from "sonner";
 
 interface CandidateDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   candidate: any; // Full raw LinkedIn profile data
+  sessionId?: string; // Optional session ID for save functionality
+  onSaveToggle?: () => void; // Optional callback after save/unsave
 }
 
-export function CandidateDetailModal({ open, onOpenChange, candidate }: CandidateDetailModalProps) {
+export function CandidateDetailModal({ open, onOpenChange, candidate, sessionId, onSaveToggle }: CandidateDetailModalProps) {
+  const { user } = useAuth();
+  const [isSaved, setIsSaved] = useState(false);
+  const [isTogglingeSave, setIsTogglingSave] = useState(false);
+
+  // Hooks must be called before any early returns
+  useEffect(() => {
+    const checkIfSaved = async () => {
+      if (!user || !candidate || !sessionId) return;
+
+      const rawData = candidate.rawData || candidate;
+      const publicId = rawData.public_id || candidate.public_id || "";
+
+      if (!publicId) return;
+
+      try {
+        const response = await fetch(`/api/profiles/saved?userId=${user.id}&candidatePublicId=${publicId}`, {
+          headers: {
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setIsSaved(data.isSaved);
+        }
+      } catch (error) {
+        console.error('Error checking save status:', error);
+      }
+    };
+
+    if (open) {
+      checkIfSaved();
+    }
+  }, [open, user, candidate, sessionId]);
+
   if (!candidate) return null;
 
   const rawData = candidate.rawData || candidate;
@@ -23,8 +63,58 @@ export function CandidateDetailModal({ open, onOpenChange, candidate }: Candidat
   const currentCompany = rawData.company || candidate.company || "No company";
   const location = rawData.location || candidate.location || "Location not specified";
   const about = rawData.about || candidate.summary || "";
-  const linkedinUrl = rawData.linkedin_url || rawData.profile_url || candidate.linkedinUrl || `https://www.linkedin.com/in/${rawData.public_id || candidate.public_id}`;
+  const publicId = rawData.public_id || candidate.public_id || "";
+
+  // Fix LinkedIn URL - use Google search if no valid LinkedIn URL
+  let linkedinUrl = rawData.linkedin_url || rawData.profile_url || candidate.linkedinUrl || "";
+  if (!linkedinUrl || linkedinUrl === "None" || linkedinUrl === "") {
+    // Use Google search as fallback
+    linkedinUrl = `https://www.google.com/search?q=${encodeURIComponent(fullName + " " + currentCompany + " LinkedIn")}`;
+  }
+
   const companyLogo = rawData.company_logo_url || candidate.companyLogo || "";
+
+  // Toggle save/unsave
+  const handleToggleSave = async () => {
+    if (!user || !publicId || !sessionId) {
+      toast.error('Unable to save profile. Please try again.');
+      return;
+    }
+
+    setIsTogglingSave(true);
+    try {
+      const response = await fetch('/api/profiles/toggle-save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
+        },
+        body: JSON.stringify({
+          candidatePublicId: publicId,
+          sessionId: sessionId,
+          user: user
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setIsSaved(data.saved);
+        toast.success(data.message);
+
+        // Call the callback if provided
+        if (onSaveToggle) {
+          onSaveToggle();
+        }
+      } else {
+        toast.error('Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Error toggling save:', error);
+      toast.error('An error occurred');
+    } finally {
+      setIsTogglingSave(false);
+    }
+  };
   
   // Sort experiences by recency (current first, then by start year descending)
   const experiences = rawData.experiences || [];
@@ -64,12 +154,26 @@ export function CandidateDetailModal({ open, onOpenChange, candidate }: Candidat
                     </div>
                   )}
                 </div>
-                <Button asChild variant="default" size="sm" className="gap-2">
-                  <a href={linkedinUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                    View LinkedIn Profile
-                  </a>
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button asChild variant="default" size="sm" className="gap-2">
+                    <a href={linkedinUrl} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-4 w-4" />
+                      {linkedinUrl.includes('google.com') ? 'Search on Google' : 'View LinkedIn Profile'}
+                    </a>
+                  </Button>
+                  {sessionId && user && (
+                    <Button
+                      variant={isSaved ? "default" : "outline"}
+                      size="sm"
+                      className="gap-2"
+                      onClick={handleToggleSave}
+                      disabled={isTogglingeSave}
+                    >
+                      <Bookmark className={`h-4 w-4 ${isSaved ? 'fill-current' : ''}`} />
+                      {isSaved ? 'Saved' : 'Save'}
+                    </Button>
+                  )}
+                </div>
               </div>
               {companyLogo && (
                 <div className="flex-shrink-0">

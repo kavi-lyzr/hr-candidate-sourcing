@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { useAppToast } from '@/hooks/use-app-toast';
 import { IJobDescriptionDocument } from '@/models/jobDescription';
 import { IconLoader2 } from '@tabler/icons-react';
+import { useAuth } from '@/lib/AuthProvider';
 
 interface DeleteJdDialogProps {
   jd: IJobDescriptionDocument | null;
@@ -24,24 +25,37 @@ interface DeleteJdDialogProps {
 }
 
 export function DeleteJdDialog({ jd, isOpen, onOpenChange, onJdDeleted }: DeleteJdDialogProps) {
+  const { userId } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useAppToast();
 
   const handleDelete = async () => {
-    if (!jd) return;
+    if (!jd || !userId) return;
+
+    // Close dialog immediately for better UX
+    onOpenChange(false);
     setIsLoading(true);
+
+    // Show optimistic feedback
+    toast({ title: 'Deleting...', description: 'Removing job description.' });
+
+    // Call onJdDeleted immediately for optimistic UI update
+    onJdDeleted();
+
     try {
-      const response = await fetch(`/api/jds/${jd._id}`,
+      const response = await fetch(`/api/jds/${jd._id}?userId=${userId}`,
         {
           method: 'DELETE',
         }
       );
-      if (!response.ok) throw new Error('Failed to delete JD');
+      if (!response.ok) {
+        throw new Error('Failed to delete JD');
+      }
       toast({ title: 'Success', description: 'Job description deleted.' });
-      onJdDeleted();
-      onOpenChange(false);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not delete job description.' });
+      // If deletion fails, refresh the list to show the item again
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not delete job description. Please try again.' });
+      onJdDeleted(); // Refresh to restore the item
     } finally {
       setIsLoading(false);
     }

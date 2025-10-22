@@ -797,11 +797,11 @@ export default function Home() {
 
   // Load JDs from API only when authenticated
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !userId) return;
 
     const fetchJDs = async () => {
       try {
-        const response = await fetch('/api/jds');
+        const response = await fetch(`/api/jds?userId=${userId}`);
         if (response.ok) {
           const jds = await response.json();
           setAvailableJDs(jds.map((jd: { _id: string; title: string }) => ({ id: jd._id, name: jd.title })));
@@ -815,7 +815,7 @@ export default function Home() {
 
     setIsClient(true);
     fetchJDs();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, userId]);
 
   if (showChat) {
     return (

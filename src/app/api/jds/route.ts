@@ -6,12 +6,16 @@ import formidable from 'formidable';
 import fs from 'fs/promises';
 import { NextApiRequest } from 'next';
 
-// Placeholder for getting user ID from the request. 
-// This needs to be replaced with actual authentication logic.
+// Get user ID from the request using lyzrUserId query parameter
 async function getUserIdFromRequest(req: Request): Promise<string | null> {
-    // In a real app, you'd verify a JWT or session cookie.
-    // For now, let's find a user and assume it's them.
-    const user = await User.findOne(); 
+    const url = new URL(req.url);
+    const lyzrUserId = url.searchParams.get('userId');
+
+    if (!lyzrUserId) {
+        return null;
+    }
+
+    const user = await User.findOne({ lyzrUserId });
     return user ? user._id.toString() : null;
 }
 

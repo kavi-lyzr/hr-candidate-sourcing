@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAppToast } from '@/hooks/use-app-toast';
 import { IconLoader2 } from '@tabler/icons-react';
+import { useAuth } from '@/lib/AuthProvider';
 
 interface CreateJdDialogProps {
   onJdCreated: () => void;
@@ -23,6 +24,7 @@ interface CreateJdDialogProps {
 }
 
 export function CreateJdDialog({ onJdCreated, children }: CreateJdDialogProps) {
+  const { userId } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useAppToast();
@@ -39,9 +41,13 @@ export function CreateJdDialog({ onJdCreated, children }: CreateJdDialogProps) {
       toast({ variant: 'destructive', title: 'Missing fields', description: 'Please provide both a title and content.' });
       return;
     }
+    if (!userId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'User not authenticated.' });
+      return;
+    }
     setIsLoading(true);
     try {
-      const response = await fetch('/api/jds', {
+      const response = await fetch(`/api/jds?userId=${userId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, content }),
@@ -62,12 +68,16 @@ export function CreateJdDialog({ onJdCreated, children }: CreateJdDialogProps) {
       toast({ variant: 'destructive', title: 'No file selected', description: 'Please select a file to upload.' });
       return;
     }
+    if (!userId) {
+      toast({ variant: 'destructive', title: 'Error', description: 'User not authenticated.' });
+      return;
+    }
     setIsLoading(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/jds', {
+      const response = await fetch(`/api/jds?userId=${userId}`, {
         method: 'POST',
         body: formData,
       });
@@ -90,7 +100,7 @@ export function CreateJdDialog({ onJdCreated, children }: CreateJdDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[66%] min-h-fit h-[66%] flex flex-col">
+      <DialogContent className="sm:max-w-[66%] xl:max-w-[40%] min-h-fit h-[66%] flex flex-col">
         <DialogHeader className="h-16 max-h-16">
           <DialogTitle>Create New Job Description</DialogTitle>
           <DialogDescription>Add a new JD by entering the details manually or uploading a file.</DialogDescription>

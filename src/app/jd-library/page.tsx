@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/lib/AuthProvider';
 
 export default function JDLibraryPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userId } = useAuth();
   const [jds, setJds] = useState<IJobDescriptionDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -22,11 +22,11 @@ export default function JDLibraryPage() {
   const [selectedJd, setSelectedJd] = useState<IJobDescriptionDocument | null>(null);
 
   const fetchJds = async () => {
-    if (!isAuthenticated) return;
-    
+    if (!isAuthenticated || !userId) return;
+
     setIsLoading(true);
     try {
-      const response = await fetch('/api/jds');
+      const response = await fetch(`/api/jds?userId=${userId}`);
       if (!response.ok) throw new Error('Failed to fetch JDs');
       const data = await response.json();
       setJds(data);
@@ -39,10 +39,10 @@ export default function JDLibraryPage() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && userId) {
       fetchJds();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, userId]);
 
   const handleView = (jd: IJobDescriptionDocument) => {
     setSelectedJd(jd);
@@ -52,6 +52,28 @@ export default function JDLibraryPage() {
   const handleDelete = (jd: IJobDescriptionDocument) => {
     setSelectedJd(jd);
     setIsDeleteOpen(true);
+  };
+
+  const handleDeleteComplete = () => {
+    // Store the ID before any state changes
+    const idToDelete = selectedJd?._id.toString();
+
+    console.log('Delete complete called for:', idToDelete);
+    console.log('Current JDs:', jds.map(j => j._id.toString()));
+
+    // Optimistically remove the JD from the list immediately
+    if (idToDelete) {
+      setJds(prevJds => {
+        const filtered = prevJds.filter(jd => jd._id.toString() !== idToDelete);
+        console.log('Filtered JDs:', filtered.map(j => j._id.toString()));
+        return filtered;
+      });
+    }
+
+    // Then fetch from server to ensure consistency (after a small delay)
+    setTimeout(() => {
+      fetchJds();
+    }, 500);
   };
 
   return (
@@ -123,7 +145,7 @@ export default function JDLibraryPage() {
       )}
 
       <ViewJdDialog jd={selectedJd} isOpen={isViewOpen} onOpenChange={setIsViewOpen} />
-      <DeleteJdDialog jd={selectedJd} isOpen={isDeleteOpen} onOpenChange={setIsDeleteOpen} onJdDeleted={fetchJds} />
+      <DeleteJdDialog jd={selectedJd} isOpen={isDeleteOpen} onOpenChange={setIsDeleteOpen} onJdDeleted={handleDeleteComplete} />
     </div>
   );
 }

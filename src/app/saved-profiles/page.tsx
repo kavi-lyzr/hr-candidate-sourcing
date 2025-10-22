@@ -9,6 +9,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CandidateDetailModal } from "@/components/CandidateDetailModal";
 import { useAuth } from "@/lib/AuthProvider";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface SavedProfile {
   _id: string;
@@ -42,6 +52,11 @@ export default function SavedProfiles() {
   const [selectedCandidate, setSelectedCandidate] = useState<any>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [candidateDetailsCache, setCandidateDetailsCache] = useState<Map<string, any>>(new Map());
+
+  // Delete confirmation state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [profileToDelete, setProfileToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deletingProfiles, setDeletingProfiles] = useState<Set<string>>(new Set());
 
   // Function to fetch full candidate details from database
   const fetchCandidateDetails = async (publicId: string) => {
@@ -78,12 +93,95 @@ export default function SavedProfiles() {
     }
 
     const fullDetails = await fetchCandidateDetails(publicId);
-    
+
     if (fullDetails) {
       setSelectedCandidate(fullDetails);
       setDetailModalOpen(true);
     } else {
       toast.error('Unable to load candidate details');
+    }
+  };
+
+  // Function to handle remove confirmation
+  const handleRemoveClick = (profileId: string, candidateName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setProfileToDelete({ id: profileId, name: candidateName });
+    setDeleteDialogOpen(true);
+  };
+
+  // Function to delete profile with optimistic UI
+  const handleDeleteProfile = async () => {
+    if (!profileToDelete) return;
+
+    const profileId = profileToDelete.id;
+
+    // Close dialog immediately
+    setDeleteDialogOpen(false);
+    setProfileToDelete(null);
+
+    // Optimistically mark as deleting
+    setDeletingProfiles(prev => new Set(prev).add(profileId));
+
+    // Optimistically update UI - remove from list
+    setSearchHistory(prevHistory =>
+      prevHistory.map(session => ({
+        ...session,
+        savedProfiles: session.savedProfiles.filter(p => p._id !== profileId)
+      })).filter(session => session.savedProfiles.length > 0) // Remove empty sessions
+    );
+
+    try {
+      const response = await fetch(`/api/saved-profiles/${profileId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
+        }
+      });
+
+      if (response.ok) {
+        toast.success('Profile removed successfully');
+        // Remove from deleting set
+        setDeletingProfiles(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(profileId);
+          return newSet;
+        });
+      } else {
+        // Revert on error - refresh from server
+        toast.error('Failed to remove profile');
+        const refreshResponse = await fetch(`/api/saved-profiles/by-session?userId=${userId}`, {
+          headers: {
+            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
+          }
+        });
+        if (refreshResponse.ok) {
+          const data = await refreshResponse.json();
+          setSearchHistory(data.sessions || []);
+        }
+        setDeletingProfiles(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(profileId);
+          return newSet;
+        });
+      }
+    } catch (error) {
+      console.error('Error deleting profile:', error);
+      toast.error('An error occurred while removing the profile');
+      // Revert on error
+      const refreshResponse = await fetch(`/api/saved-profiles/by-session?userId=${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
+        }
+      });
+      if (refreshResponse.ok) {
+        const data = await refreshResponse.json();
+        setSearchHistory(data.sessions || []);
+      }
+      setDeletingProfiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(profileId);
+        return newSet;
+      });
     }
   };
 
@@ -240,14 +338,18 @@ export default function SavedProfiles() {
                   <div className="border-t pt-4">
                     <h4 className="text-xs sm:text-sm font-medium text-foreground mb-3">Saved Profiles ({search.savedProfiles.length})</h4>
                     <div className="space-y-3">
-                      {search.savedProfiles.map((profile, index) => (
-                        <div
-                          key={profile._id}
-                          className="bg-muted/50 rounded-lg p-3 sm:p-4 hover:bg-muted/70 transition-colors duration-200 animate-fade-in-up cursor-pointer"
-                          style={{ animationDelay: `${index * 50}ms` }}
-                          onClick={() => openCandidateDetail(profile.candidate.publicId)}
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      {search.savedProfiles.map((profile, index) => {
+                        const isDeleting = deletingProfiles.has(profile._id);
+                        return (
+                          <div
+                            key={profile._id}
+                            className={`bg-muted/50 rounded-lg p-3 sm:p-4 hover:bg-muted/70 transition-all duration-300 animate-fade-in-up cursor-pointer ${
+                              isDeleting ? 'opacity-50 scale-95 pointer-events-none' : ''
+                            }`}
+                            style={{ animationDelay: `${index * 50}ms` }}
+                            onClick={() => !isDeleting && openCandidateDetail(profile.candidate.publicId)}
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 sm:gap-3 mb-2 flex-wrap">
                                 <h5
@@ -281,15 +383,16 @@ export default function SavedProfiles() {
                               size="sm"
                               variant="outline"
                               className="text-destructive border-destructive/20 hover:bg-destructive/10 hover:border-destructive/30 transition-colors w-full sm:w-auto text-xs sm:text-sm flex-shrink-0"
-                              disabled // Remove functionality is not implemented in this pass
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e) => handleRemoveClick(profile._id, profile.candidate.fullName, e)}
+                              disabled={isDeleting}
                             >
                               <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
-                              Remove
+                              {isDeleting ? 'Removing...' : 'Remove'}
                             </Button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </CardContent>
@@ -315,6 +418,27 @@ export default function SavedProfiles() {
         onOpenChange={setDetailModalOpen}
         candidate={selectedCandidate}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Saved Profile</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove <strong>{profileToDelete?.name}</strong> from your saved profiles? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteProfile}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

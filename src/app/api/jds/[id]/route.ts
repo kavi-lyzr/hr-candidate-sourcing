@@ -3,9 +3,16 @@ import dbConnect from '@/lib/db';
 import JobDescription from '@/models/jobDescription';
 import User from '@/models/user';
 
-// Placeholder for getting user ID from the request.
+// Get user ID from the request using lyzrUserId query parameter
 async function getUserIdFromRequest(req: Request): Promise<string | null> {
-    const user = await User.findOne();
+    const url = new URL(req.url);
+    const lyzrUserId = url.searchParams.get('userId');
+
+    if (!lyzrUserId) {
+        return null;
+    }
+
+    const user = await User.findOne({ lyzrUserId });
     return user ? user._id.toString() : null;
 }
 
