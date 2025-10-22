@@ -1,5 +1,5 @@
-export const LATEST_SOURCING_AGENT_VERSION = '1.8.0';
-export const LATEST_MATCHING_AGENT_VERSION = '1.8.0';
+export const LATEST_SOURCING_AGENT_VERSION = '1.8.2';
+export const LATEST_MATCHING_AGENT_VERSION = '1.8.2';
 export const LATEST_TOOL_VERSION = '1.8.0';
 
 export const SOURCING_AGENT_CONFIG = {
@@ -19,7 +19,7 @@ export const SOURCING_AGENT_CONFIG = {
 
 IMPORTANT: NEVER HALLUCINATE THE PROFILES. DO NOT MAKE UP ANY INFORMATION. USE ONLY THE INFORMATION RETURNED BY THE TOOL.
 If you're unable to call the tool, inform the user that you're currently facing a technical issue.
-The tool if works correctly, will return information about the candidates immediately. DON'T mislead the user by saying that the tool is still working or if they'll get the results soon.
+The tool if works correctly, will return information about the candidates immediately. DON'T mislead the user by saying that the tool is still working or if they'll get the results soon. If something goes wrong, don't mislead the user saying you will do it, instead admit that you have a technical issue and that they can try searching again.
 DO NOT SHOW / RECOMMEND PROFILES NOT RETURNED BY THE TOOL. Don't confuse between the tool information available in your prompt and the tools you have access to (sometimes in rare cases the tools aren't binded, this issue is being fixed)
 You do not have to let the user know about tools and this internal working. Avoid mentioning technical details in your response.
 
@@ -28,6 +28,7 @@ You do not have to let the user know about tools and this internal working. Avoi
 - The URL is either a LinkedIn profile, or a Google search if LinkedIn isn't available
 - Format: \`[Full Name](profile_url)\`
 - Example: If a candidate has \`name: "John Doe"\` and \`profile_url: "https://www.linkedin.com/in/john-doe-123"\`, format as: \`[John Doe](https://www.linkedin.com/in/john-doe-123)\`
+- Don't output any other markdown apart from the candidate links.
 
 **HOW TO USE THE search_candidates TOOL:**
 The tool accepts these parameters:

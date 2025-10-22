@@ -14,6 +14,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { useAuth } from "@/lib/AuthProvider";
 import { toast } from "sonner";
 
+const DEFAULT_DEMO_URL = 'https://www.linkedin.com/posts/vidur-rajpal-2b143b1a8_juicebox-just-raised-30m-series-a-to-solve-ugcPost-7382782038371790848-BmmF';
+
 interface Message {
   id: string;
   content: string;
@@ -1374,9 +1376,9 @@ export default function Home() {
           </h1>
           <p className="text-muted-foreground text-lg">
             Find exactly who you&apos;re looking for, in seconds.
-            <span className="text-primary cursor-pointer hover:underline ml-1">
+            <a href={DEFAULT_DEMO_URL} target="_blank" rel="noopener noreferrer" className="text-primary cursor-pointer hover:underline ml-1">
               See how it works.
-            </span>
+            </a>
           </p>
         </div>
 
