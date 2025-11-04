@@ -123,11 +123,7 @@ export default function CandidateMatching() {
       
       try {
         setIsLoading(true);
-        const response = await fetch('/api/jds', {
-          headers: {
-            'Authorization': `Bearer ${process.env.NEXT_PUBLIC_API_AUTH_TOKEN}`
-          }
-        });
+        const response = await fetch(`/api/jds?userId=${userId}`);
         
         if (response.ok) {
           const data = await response.json();
