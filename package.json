@@ -57,7 +57,7 @@
     "lyzr-agent": "github:NeuralgoLyzr/lyzr-studio-node-sdk",
     "mammoth": "^1.11.0",
     "mongoose": "^8.18.2",
-    "next": "15.5.0",
+    "next": "15.5.9",
     "next-auth": "^4.24.11",
     "next-themes": "^0.4.6",
     "pdf-parse": "^1.1.1",
